@@ -12,3 +12,34 @@
 frontend : React  
 backend : flask  
 AI : Python
+
+### 규칙 정리
+
+1. 함수 선언
+   - 화살표 함수 (Arrow Function) 사용
+2. 폴더명
+   - 소문자 + kebab-case
+3. 컴포넌트 파일명
+   - 대문자 + PascalCase
+   - 컴포넌트의 폴더명과 동일하게 작성
+4. 유틸함수 파일명
+   - 소문자 + camelCase
+
+### 커밋 메시지 / 브랜치 명칭
+
+- feat: 새로운 기능 추가
+- fix: 버그 수정
+- docs: 문서 수정
+- refactor: 코드 리팩토링
+
+### 폴더 구조 요약
+
+| 폴더 이름     | 역할                        |
+| ------------- | --------------------------- |
+| `api/`        | API 요청 관련 코드          |
+| `assets/`     | 이미지, 아이콘 등 정적 자원 |
+| `components/` | 재사용 가능한 UI 컴포넌트   |
+| `pages/`      | 라우팅되는 페이지 컴포넌트  |
+| `utils/`      | 유틸리티 함수               |
+| `store/`      | 상태 관리 관련 코드         |
+| `types/`      | TypeScript 타입 정의        |
