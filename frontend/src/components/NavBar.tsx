@@ -13,7 +13,7 @@ import {
 type TabKey = "home" | "quiz" | "game" | "mypage";
 
 interface TabBarProps {
-  key: TabKey;
+  id: TabKey;
   label: string;
   icon: string;
   activeIcon: string;
@@ -22,28 +22,28 @@ interface TabBarProps {
 
 const tabs: TabBarProps[] = [
   {
-    key: "home",
+    id: "home",
     label: "홈",
     icon: home,
     activeIcon: home_active,
     path: "/",
   },
   {
-    key: "quiz",
+    id: "quiz",
     label: "퀴즈",
     icon: quiz,
     activeIcon: quiz_active,
     path: "/quiz",
   },
   {
-    key: "game",
+    id: "game",
     label: "모의투자",
     icon: game,
     activeIcon: game_active,
     path: "/game",
   },
   {
-    key: "mypage",
+    id: "mypage",
     label: "내 정보",
     icon: mypage,
     activeIcon: mypage_active,
@@ -60,12 +60,12 @@ export const NavBar = () => {
 
   return (
     <nav className="fixed bottom-0 w-full max-w-md h-[83px]  shrink-0 bg-white rounded-t-3xl shadow-[0_-2px_12px_rgba(0,0,0,0.08)] flex justify-around items-center px-4">
-      {tabs.map(({ key, label, icon, activeIcon, path }) => {
+      {tabs.map(({ id, label, icon, activeIcon, path }) => {
         const active = isActiveTab(path, pathname);
 
         return (
           <button
-            key={key}
+            key={id}
             onClick={() => navigate(path)}
             className={`flex flex-col items-center gap-1 text-xs font-medium cursor-pointer ${
               active ? "text-gray-900" : "text-gray-400"
