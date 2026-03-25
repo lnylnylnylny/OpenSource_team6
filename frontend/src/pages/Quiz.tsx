@@ -1,6 +1,6 @@
 import { NavBar } from "../components/NavBar";
 
-export const Home = () => {
+export const Quiz = () => {
   return (
     <div>
       <NavBar />
