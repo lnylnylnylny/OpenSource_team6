@@ -1,3 +1,6 @@
-backend/__pycache__/main.cpython-312.pyc
-backend/__pycache__/main.cpython-312.pyc
+# 파이썬 캐시 폴더 전체 무시
+__pycache__/
+*.pyc
+
+# 환경 변수 파일 무시
 .env
