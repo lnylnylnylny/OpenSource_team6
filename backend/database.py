@@ -27,6 +27,18 @@ host = os.getenv("DB_HOST")
 db_name = os.getenv("DB_NAME")
 port = os.getenv("DB_PORT") # 포트는 필수가 아니므로 기본값 처리
 
+# 필수 환경변수 검증 (없을 경우 명확한 예외 발생)
+required_env_vars = {
+    "DB_USER": user,
+    "DB_PASSWORD": password,
+    "DB_HOST": host,
+    "DB_NAME": db_name,
+}
+missing_env_vars = [name for name, value in required_env_vars.items() if not value]
+if missing_env_vars:
+    raise RuntimeError(
+        f"Missing required database environment variables: {', '.join(missing_env_vars)}"
+    )
 # 4. 안전하게 DB URL 생성
 db_url = URL.create(
     "mysql+pymysql",
