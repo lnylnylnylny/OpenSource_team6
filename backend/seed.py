@@ -16,7 +16,7 @@ def insert_data():
             question="주식 시장에서 '매수'의 반대말은?", 
             options="공매도,매도,상장,증자", 
             answer=1, 
-            explanation="주식을 사는 것을 매수, 파는 것을 매도라고 합니다."
+            explanation="사는 것을 매수, 파는 것을 매도라고 합니다."
         )
     ]
 
