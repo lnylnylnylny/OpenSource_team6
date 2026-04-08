@@ -15,9 +15,9 @@ const router = createBrowserRouter([
       { index: true, element: <Login /> },
       { path: "quiz", element: <Quiz /> },
       { path: "home", element: <Home /> },
+      { path: "oauth/kakao", element: <KakaoCallback /> },
     ],
   },
-  { path: "oauth/kakao", element: <KakaoCallback /> },
 ]);
 
 createRoot(document.getElementById("root")!).render(
