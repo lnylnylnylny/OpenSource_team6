@@ -1,9 +1,11 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router";
 import { kakaoLogin } from "../api/authApi";
+import { useAuthStore } from "../store/authStore";
 
 export default function KakaoCallback() {
   const navigate = useNavigate();
+  const setUser = useAuthStore((state) => state.setUser);
 
   useEffect(() => {
     const handleKakaoCallback = async () => {
@@ -18,6 +20,8 @@ export default function KakaoCallback() {
         // JWT + 유저 정보 localStorage에 저장
         localStorage.setItem("accessToken", data.access_token);
         localStorage.setItem("user", JSON.stringify(data.user));
+        setUser(data.user);
+
         navigate("/home");
         console.log("로그인 성공:", data);
       } catch {

@@ -6,6 +6,7 @@ import { Home } from "./pages/Home.tsx";
 import { Quiz } from "./pages/Quiz.tsx";
 import Login from "./pages/Login.tsx";
 import KakaoCallback from "./pages/KakaoCallback.tsx";
+import { Mypage } from "./pages/Mypage.tsx";
 
 const router = createBrowserRouter([
   {
@@ -16,6 +17,7 @@ const router = createBrowserRouter([
       { path: "quiz", element: <Quiz /> },
       { path: "home", element: <Home /> },
       { path: "oauth/kakao", element: <KakaoCallback /> },
+      { path: "mypage", element: <Mypage /> },
     ],
   },
 ]);
