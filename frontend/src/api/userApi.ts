@@ -34,3 +34,10 @@ export const updateProfile = async (
   );
   return response.data;
 };
+
+export const deleteAccount = async (): Promise<void> => {
+  const token = localStorage.getItem("accessToken");
+  await axios.delete(`${BASE_URL}/users/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+};

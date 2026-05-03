@@ -55,3 +55,11 @@ async def update_profile(
         "email": current_user.email,
         "profile_image": current_user.profile_image,
     }
+
+@router.delete("/me", status_code=204)
+def delete_account(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    db.delete(current_user)
+    db.commit()
