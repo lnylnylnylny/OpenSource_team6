@@ -26,7 +26,7 @@ const tabs: TabBarProps[] = [
     label: "홈",
     icon: home,
     activeIcon: home_active,
-    path: "/",
+    path: "/home",
   },
   {
     id: "quiz",
