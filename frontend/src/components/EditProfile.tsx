@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { camera, profile } from "../assets";
 import { useAuthStore } from "../store/authStore";
-import { updateProfile, deleteAccount } from "../api/userApi";
+import { updateProfile, deleteAccount, logout } from "../api/userApi";
 
 interface EditProfileProps {
   isOpen: boolean;
@@ -92,6 +92,13 @@ export const EditProfile = ({ isOpen, onClose }: EditProfileProps) => {
     }
   };
 
+  const handleLogout = () => {
+    logout();
+    clearUser();
+    onClose();
+    navigate("/", { replace: true });
+  };
+
   const currentImage = previewImage || user?.profile_image || profile;
   const isChanged = nickname !== user?.nickname || previewImage !== null;
 
@@ -107,7 +114,7 @@ export const EditProfile = ({ isOpen, onClose }: EditProfileProps) => {
       >
         <div
           ref={sheetRef}
-          className={`w-full max-w-120 bg-white rounded-t-2xl transition-transform duration-300 ease-out ${
+          className={`w-full max-w-md bg-white rounded-t-2xl transition-transform duration-300 ease-out ${
             isAnimating ? "translate-y-0" : "translate-y-full"
           }`}
         >
@@ -202,6 +209,12 @@ export const EditProfile = ({ isOpen, onClose }: EditProfileProps) => {
             {/* 구분선 + 회원탈퇴 */}
             <div className="w-full pb-2">
               <div className="w-full border-t border-gray-100 mb-4" />
+              <button
+                onClick={handleLogout}
+                className="w-full text-xs text-gray-400 hover:text-gray-600 transition-colors cursor-pointer text-center py-1"
+              >
+                로그아웃
+              </button>
               <button
                 onClick={() => setShowDeleteConfirm(true)}
                 className="w-full text-xs text-gray-400 hover:text-red-400 transition-colors cursor-pointer text-center py-1"

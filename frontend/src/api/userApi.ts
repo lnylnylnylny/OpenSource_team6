@@ -41,3 +41,7 @@ export const deleteAccount = async (): Promise<void> => {
     headers: { Authorization: `Bearer ${token}` },
   });
 };
+
+export const logout = (): void => {
+  localStorage.removeItem("accessToken");
+};
