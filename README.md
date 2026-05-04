@@ -43,3 +43,22 @@ AI : Python
 | `utils/`      | 유틸리티 함수               |
 | `store/`      | 상태 관리 관련 코드         |
 | `types/`      | TypeScript 타입 정의        |
+
+## Contribution
+
+초기 시작 시 repository 클론 후 `.env` 파일을 수정한 뒤, 다음 명령어를 실행하여 개발 환경을 설정하세요.
+
+### Frontend
+```bash
+cd frontend/
+bun i
+bun run dev
+```
+
+### Backend
+```bash
+cd backend/
+uv sync
+uv run uvicorn main:app
+```
+
