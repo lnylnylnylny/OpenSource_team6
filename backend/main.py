@@ -4,6 +4,7 @@ from database import Base, engine
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles 
 from routers.users import router as users_router
+from routers.quiz import router as quiz_router
 
 # 앱 시작 시 테이블 자동 생성
 Base.metadata.create_all(bind=engine)
@@ -22,6 +23,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 app.include_router(auth_router)
 app.include_router(users_router)
+app.include_router(quiz_router)
 
 @app.get("/")
 def root():
