@@ -1,48 +1,70 @@
 import React, { useState } from 'react';
 
-export const QuizCard = () => {
-  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+interface QuizProps {
+  quiz: {
+    question: string;
+    options: string;
+    answer: number;
+    explanation: string;
+    difficulty: string;
+  };
+  onNext: () => void;
+}
 
-  const quizData = {
-    question: "주식시장에서 흔히 말하는 우량주(Blue Chip)의 특징으로 가장 알맞은 것은?",
-    options: [
-      "재무구조가 탄탄하고 장기간 안정적인 실적을 내는 주식",
-      "단기간에 큰 수익을 노리는 주식",
-      "가격 변동이 매우 심한 주식",
-      "상장된 지 1년 이하의 신생 기업 주식"
-    ],
-    answer: 0
+export const QuizCard = ({ quiz, onNext }: QuizProps) => {
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+
+  const optionsArray = quiz.options.split(',');
+
+  const handleNext = () => {
+    setIsSubmitted(false);
+    setSelectedIdx(null);
+    onNext();
   };
 
   return (
     <div className="flex flex-col w-full max-w-[393px] min-h-screen bg-white mx-auto relative overflow-hidden">
-      {/* 상단 파란색 영역 */}
-      <div className="bg-[#3182F7] w-full h-[381px] p-6 pt-20">
-        <button className="mb-6">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+      {/* 상단 영역: 그림 영역을 삭제하고 텍스트 중앙 집중형으로 변경 */}
+      <div className="bg-[#3182F7] w-full h-[320px] p-8 pt-20 transition-all flex flex-col justify-center">
+        <button 
+          className="absolute top-14 left-6 hover:opacity-70 transition-opacity" 
+          onClick={() => onNext()}
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </button>
-        <h2 className="text-white text-[24px] font-medium leading-[30px] break-keep">
-          {quizData.question}
-        </h2>
-        {/* 캐릭터 이미지가 들어갈 자리 (image 7 반영) */}
-        <div className="absolute right-4 top-[192px] w-[176px] h-[176px] bg-blue-400/20 rounded-full flex items-center justify-center text-white text-xs">
-          이미지 영역
+        
+        <div className="mb-4">
+          <span className="bg-white/20 text-white px-3 py-1 rounded-full text-xs font-bold tracking-widest uppercase">
+            LEVEL: {quiz.difficulty}
+          </span>
         </div>
+        
+        <h2 className="text-white text-[26px] font-semibold leading-[36px] break-keep">
+          {quiz.question}
+        </h2>
       </div>
 
-      {/* 선택지 영역 */}
-      <div className="flex-1 bg-[#F2F2F6] rounded-t-[30px] -mt-10 p-5 pb-32">
-        <div className="grid grid-cols-2 gap-4 mt-4">
-          {quizData.options.map((option, i) => (
+      {/* 선택지 영역: 상단 카드와 겹치도록 -mt-10 유지 */}
+      <div className="flex-1 bg-[#F2F2F6] rounded-t-[30px] -mt-10 p-5 pb-32 shadow-inner">
+        <div className="grid grid-cols-2 gap-3 mt-4">
+          {optionsArray.map((option, i) => (
             <button
               key={i}
+              disabled={isSubmitted}
               onClick={() => setSelectedIdx(i)}
-              className={`h-[106px] p-4 flex items-center justify-center text-center text-[15px] leading-[20px] rounded-[10px] bg-white transition-all ${
+              className={`h-[110px] p-4 flex items-center justify-center text-center text-[15px] leading-[22px] rounded-[15px] transition-all duration-200 ${
                 selectedIdx === i 
-                  ? "border-2 border-[#0064FF] text-[#0064FF] font-semibold" 
-                  : "border border-[#D1D6DA] text-black"
+                  ? "border-2 border-[#0064FF] text-[#0064FF] font-bold bg-white shadow-md" 
+                  : "border border-[#D1D6DA] text-black bg-white"
+              } ${
+                // 제출 후 정답 표시: 초록색 테두리
+                isSubmitted && i === quiz.answer ? "border-2 border-green-500 bg-green-50" : ""
+              } ${
+                // 제출 후 내가 고른 답이 오답일 때: 빨간색 테두리
+                isSubmitted && i === selectedIdx && i !== quiz.answer ? "border-2 border-red-500 bg-red-50" : ""
               }`}
             >
               {option}
@@ -50,14 +72,29 @@ export const QuizCard = () => {
           ))}
         </div>
 
-        {/* 제출하기 버튼 */}
+        {/* 결과 및 해설 박스: 애니메이션 효과 추가 */}
+        {isSubmitted && (
+          <div className="mt-6 p-5 bg-white rounded-[15px] border border-gray-100 shadow-sm transition-all animate-in fade-in slide-in-from-bottom-2">
+            <div className="flex items-center gap-2 mb-2">
+              <span className={`text-lg font-bold ${selectedIdx === quiz.answer ? "text-green-600" : "text-red-600"}`}>
+                {selectedIdx === quiz.answer ? "정답이에요! 🎉" : "아쉬워요.. 😢"}
+              </span>
+            </div>
+            <p className="text-gray-600 text-[14px] leading-[20px] break-keep">
+              {quiz.explanation}
+            </p>
+          </div>
+        )}
+
+        {/* 하단 버튼 고정 느낌을 위해 mt-8 */}
         <button 
-          className={`w-full h-[58px] mt-8 rounded-[10px] text-white text-[20px] font-medium transition-all ${
-            selectedIdx !== null ? "bg-[#0064FF]" : "bg-gray-300"
+          onClick={isSubmitted ? handleNext : () => setIsSubmitted(true)}
+          className={`w-full h-[60px] mt-8 rounded-[15px] text-white text-[18px] font-bold transition-all active:scale-95 ${
+            selectedIdx !== null ? "bg-[#0064FF] shadow-lg shadow-blue-200" : "bg-gray-300"
           }`}
           disabled={selectedIdx === null}
         >
-          제출하기
+          {isSubmitted ? "다음 문제 도전하기" : "제출하기"}
         </button>
       </div>
     </div>
