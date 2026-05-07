@@ -10,7 +10,7 @@ import {
   quiz_active,
 } from "../assets";
 
-type TabKey = "home" | "quiz" | "game" | "mypage";
+type TabKey = "home" | "quiz" | "stocks" | "mypage";
 
 interface TabBarProps {
   id: TabKey;
@@ -36,11 +36,11 @@ const tabs: TabBarProps[] = [
     path: "/quiz",
   },
   {
-    id: "game",
+    id: "stocks",
     label: "모의투자",
     icon: game,
     activeIcon: game_active,
-    path: "/game",
+    path: "/stocks",
   },
   {
     id: "mypage",

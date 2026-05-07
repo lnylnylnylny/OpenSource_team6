@@ -1,0 +1,313 @@
+# matching_engine.py
+from sqlalchemy.orm import Session
+from sqlalchemy import and_, func
+from decimal import Decimal
+from datetime import datetime
+import asyncio
+from typing import Optional, Tuple
+
+from model import (
+    Order,
+    Trade,
+    Quote,
+    Stock,
+    UserBalance,
+    UserHolding,
+    Transaction,
+    User,
+)
+
+
+class MatchingEngine:
+    def __init__(self):
+        self.lock = asyncio.Lock()  # 동시성 보호 (동일 종목 동시 주문 방지)
+
+    async def match_orders(self, db: Session, stock_id: int):
+        """주요 매칭 엔진 진입점"""
+        async with self.lock:
+            match_count = 0
+            while True:
+                buy = self._get_active_orders(db, stock_id, "BUY")
+                sell = self._get_active_orders(db, stock_id, "SELL")
+
+                if not buy or not sell or buy.price < sell.price:
+                    break
+
+                # 체결 불가 조건
+                if buy.price is None or sell.price is None or buy.price < sell.price:
+                    break
+
+                # 체결 수량 결정
+                trade_volume = min(
+                    buy.volume - buy.filled_volume, sell.volume - sell.filled_volume
+                )
+                if buy.order_type == "MARKET" or sell.order_type == "MARKET":
+                    trade_price = sell.price if buy.order_type == "LIMIT" else buy.price
+                else:
+                    trade_price = (buy.price + sell.price) / 2
+
+                # Trade 생성
+                trade = Trade(
+                    buy_order_id=buy.id,
+                    sell_order_id=sell.id,
+                    stock_id=stock_id,
+                    price=trade_price,
+                    volume=trade_volume,
+                    trade_time=datetime.now(),
+                )
+                db.add(trade)
+
+                # 주문 상태 업데이트
+                buy.filled_volume += trade_volume
+                sell.filled_volume += trade_volume
+
+                buy.status = "FILLED" if buy.filled_volume >= buy.volume else "PARTIAL"
+                sell.status = (
+                    "FILLED" if sell.filled_volume >= sell.volume else "PARTIAL"
+                )
+
+                # === 핵심: 사용자 자산 업데이트 ===
+                try:
+                    self._process_trade(db, trade, buy, sell)
+                    db.commit()
+                except Exception as e:
+                    db.rollback()
+                    print(f"Trade Processing Error: {e}")
+                    break
+
+                match_count += 1
+
+                # WebSocket 브로드캐스트 (다른 파일에서 manager.broadcast 호출 가능)
+                # 여기서는 간단히 print로 대체하거나 별도 이벤트로 처리
+
+            if match_count > 0:
+                print(
+                    f"[MatchingEngine] {match_count}건 체결 완료 - Stock ID: {stock_id}"
+                )
+
+    def _get_active_orders(self, db: Session, stock_id: int, side: str):
+        query = db.query(Order).filter(
+            Order.stock_id == stock_id,
+            Order.side == side,
+            Order.status.in_(["PENDING", "PARTIAL"]),
+        )
+
+        if side == "BUY":
+            query = query.order_by(Order.order_type.desc(), Order.price.desc().nullslast(), Order.created_at.asc())
+        else:
+            query = query.order_by(Order.order_type.desc(), Order.price.asc().nullslast(), Order.created_at.asc())
+
+        return query.first()
+
+    def _process_trade(
+        self, db: Session, trade: Trade, buy_order: Order, sell_order: Order
+    ):
+        """체결 후 모든 자산 업데이트"""
+        trade_amount = trade.price * trade.volume
+
+        # 1. 매수자 업데이트
+        self._update_holding(
+            db,
+            buy_order.user_id,
+            trade.stock_id,
+            trade.volume,
+            trade.price,
+            is_buy=True,
+        )
+        self._update_cash(db, buy_order.user_id, -trade_amount)
+
+        # 2. 매도자 업데이트
+        self._update_holding(
+            db,
+            sell_order.user_id,
+            trade.stock_id,
+            trade.volume,
+            trade.price,
+            is_buy=False,
+        )
+        self._update_cash(db, sell_order.user_id, +trade_amount)
+
+        self._recalculate_total_balance(db, buy_order.user_id)
+        self._recalculate_total_balance(db, sell_order.user_id)
+
+        # 3. Stock & Quote 업데이트
+        self._update_market_price(db, trade.stock_id, trade.price, trade.volume)
+
+        # 4. 거래 내역 로그
+        self._log_transactions(db, trade, buy_order, sell_order, trade_amount)
+
+    def _recalculate_total_balance(self, db: Session, user_id: int):
+        balance = db.query(UserBalance).filter_by(user_id=user_id).first()
+        if not balance:
+            return
+
+        holdings_value = db.query(func.sum(UserHolding.current_value)).filter(
+            UserHolding.user_id == user_id
+        ).scalar() or Decimal("0")
+
+        balance.total_balance = balance.cash_balance + holdings_value
+
+    def _update_holding(
+        self,
+        db: Session,
+        user_id: int,
+        stock_id: int,
+        volume: int,
+        price: Decimal,
+        is_buy: bool,
+    ):
+        """보유 종목 업데이트 - UniqueViolation 방지 + 정확한 평균단가/투자금액 계산"""
+
+        holding = (
+            db.query(UserHolding).filter_by(user_id=user_id, stock_id=stock_id).first()
+        )
+
+        if not holding:
+            holding = UserHolding(
+                user_id=user_id,
+                stock_id=stock_id,
+                quantity=0,
+                avg_price=price,
+                total_invested=Decimal("0"),
+                current_price=price,
+            )
+            db.add(holding)
+            db.flush()  # ID 생성을 위해 flush (선택사항)
+
+        if is_buy:
+            # ==================== 매수 ====================
+            new_total_cost = holding.total_invested + (price * volume)
+            holding.quantity += volume
+            holding.avg_price = new_total_cost / holding.quantity
+            holding.total_invested = new_total_cost
+
+        else:
+            # ==================== 매도 ====================
+            if holding.quantity < volume:
+                raise ValueError(f"보유 수량 부족: {holding.quantity} < {volume}")
+
+            # 매도 시 total_invested 비례 차감
+            sell_ratio = Decimal(volume) / holding.quantity
+            sell_invested = holding.total_invested * sell_ratio
+
+            holding.quantity -= volume
+            holding.total_invested -= sell_invested
+
+            # 전량 매도하면 행 삭제 (선택)
+            if holding.quantity == 0:
+                db.delete(holding)
+                return
+
+        # ==================== 공통: 실시간 평가 업데이트 ====================
+        stock = db.query(Stock).get(stock_id)
+        current_price = stock.last_price or price
+
+        holding.current_price = current_price
+        holding.current_value = holding.quantity * current_price
+        holding.pnl = holding.current_value - holding.total_invested
+        holding.pnl_rate = (
+            (holding.pnl / holding.total_invested * 100)
+            if holding.total_invested > 0
+            else Decimal("0")
+        )
+
+        # updated_at은 DB에서 자동 처리 (onupdate=func.now())
+
+    def _update_cash(self, db: Session, user_id: int, amount: Decimal):
+        balance = db.query(UserBalance).filter_by(user_id=user_id).first()
+
+        if not balance:
+            balance = UserBalance(
+                user_id=user_id,
+                total_balance=Decimal("10000000"),
+                cash_balance=Decimal("10000000"),
+            )
+            db.add(balance)
+
+        balance.cash_balance += amount
+
+        # total_balance는 cash + holdings.current_value 합계로 다시 계산하는 것이 정확
+        # (아래 recalculate_total_balance 호출 추천)
+
+    def _update_market_price(
+        self, db: Session, stock_id: int, price: Decimal, volume: int
+    ):
+        """시장 가격 및 Quote 업데이트"""
+        stock = db.query(Stock).get(stock_id)
+        if not stock:
+            return
+
+        stock.last_price = price
+        stock.volume = (stock.volume or 0) + volume
+
+        if not stock.prev_close:
+            stock.prev_close = price
+
+        stock.change_rate = (
+            ((price - stock.prev_close) / stock.prev_close * 100)
+            if stock.prev_close
+            else Decimal("0")
+        )
+
+        # Quote 기록
+        latest_quote = (
+            db.query(Quote)
+            .filter(Quote.stock_id == stock_id)
+            .order_by(Quote.quote_time.desc())
+            .first()
+        )
+
+        now = datetime.now()
+        if latest_quote and (now - latest_quote.quote_time).total_seconds() < 3:
+            # 같은 초에 합치기
+            latest_quote.close_price = price
+            latest_quote.high_price = max(latest_quote.high_price, price)
+            latest_quote.low_price = min(latest_quote.low_price, price)
+            latest_quote.volume += volume
+        else:
+            new_quote = Quote(
+                stock_id=stock_id,
+                open_price=price,
+                high_price=price,
+                low_price=price,
+                close_price=price,
+                volume=volume,
+                quote_time=now,
+                date_only=now.date(),
+            )
+            db.add(new_quote)
+
+    def _log_transactions(
+        self,
+        db: Session,
+        trade: Trade,
+        buy_order: Order,
+        sell_order: Order,
+        amount: Decimal,
+    ):
+        """거래 로그 기록"""
+        # 매수자 로그
+        db.add(
+            Transaction(
+                user_id=buy_order.user_id,
+                stock_id=trade.stock_id,
+                type="BUY",
+                amount=-amount,
+                quantity=trade.volume,
+                price=trade.price,
+                description=f"{trade.volume}주 매수 @ {trade.price}",
+            )
+        )
+
+        # 매도자 로그
+        db.add(
+            Transaction(
+                user_id=sell_order.user_id,
+                stock_id=trade.stock_id,
+                type="SELL",
+                amount=amount,
+                quantity=trade.volume,
+                price=trade.price,
+                description=f"{trade.volume}주 매도 @ {trade.price}",
+            )
+        )

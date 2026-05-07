@@ -128,6 +128,7 @@ class Order(Base):
 
     # Relationship
     stock = relationship("Stock", back_populates="orders")
+    user = relationship("User", back_populates="orders")
 
     __table_args__ = (
         Index("idx_user_stock_status", "user_id", "stock_id", "status"),

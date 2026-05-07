@@ -5,8 +5,10 @@ from core.config import KAKAO_REST_API_KEY, KAKAO_REDIRECT_URI, KAKAO_CLIENT_SEC
 from core.jwt import create_access_token
 from database import get_db
 from model.user import User
+import random
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
 
 @router.get("/kakao")
 def kakao_callback(code: str, db: Session = Depends(get_db)):
@@ -16,10 +18,10 @@ def kakao_callback(code: str, db: Session = Depends(get_db)):
         "https://kauth.kakao.com/oauth/token",
         headers={"Content-Type": "application/x-www-form-urlencoded;charset=utf-8"},
         data={
-            "grant_type":    "authorization_code",
-            "client_id":     KAKAO_REST_API_KEY,
-            "redirect_uri":  KAKAO_REDIRECT_URI,
-            "code":          code,
+            "grant_type": "authorization_code",
+            "client_id": KAKAO_REST_API_KEY,
+            "redirect_uri": KAKAO_REDIRECT_URI,
+            "code": code,
             "client_secret": KAKAO_CLIENT_SECRET,
         },
     )
@@ -30,7 +32,6 @@ def kakao_callback(code: str, db: Session = Depends(get_db)):
             status_code=400,
             detail={"error": body.get("error"), "desc": body.get("error_description")},
         )
-
 
     # 액세스 토큰 -> 유저 정보
     user_res = requests.get(
@@ -69,11 +70,35 @@ def kakao_callback(code: str, db: Session = Depends(get_db)):
     # JWT 발급 후 반환
     return {
         "access_token": create_access_token(user.id),
-        "token_type":   "bearer",
+        "token_type": "bearer",
         "user": {
             "id": user.id,
             "nickname": user.nickname,
             "email": user.email,
             "profile_image": user.profile_image,
+        },
+    }
+
+
+@router.get("/guest", tags=["auth"])
+def guest_login(db: Session = Depends(get_db)):
+    guest_user = User(
+        provider="guest",
+        provider_id=random.randint(100000, 999999),
+        nickname=f"Guest{random.randint(1000, 9999)}",
+        email=None,
+        profile_image=None,
+    )
+    db.add(guest_user)
+    db.commit()
+    db.refresh(guest_user)
+    return {
+        "access_token": create_access_token(guest_user.id),
+        "token_type": "bearer",
+        "user": {
+            "id": guest_user.id,
+            "nickname": guest_user.nickname,
+            "email": guest_user.email,
+            "profile_image": guest_user.profile_image,
         },
     }

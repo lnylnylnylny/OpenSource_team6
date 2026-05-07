@@ -7,6 +7,10 @@ import { Quiz } from "./pages/Quiz.tsx";
 import Login from "./pages/Login.tsx";
 import KakaoCallback from "./pages/KakaoCallback.tsx";
 import { Mypage } from "./pages/Mypage.tsx";
+import PortfolioPage from "./pages/stocks/Portfolio.tsx";
+import OrdersPage from "./pages/stocks/Orders.tsx";
+import StockListPage from "./pages/stocks/List.tsx";
+import StockDetailPage from "./pages/stocks/Details.tsx";
 
 const router = createBrowserRouter([
   {
@@ -21,10 +25,15 @@ const router = createBrowserRouter([
       { path: "quiz", element: <Quiz /> },
       { path: "home", element: <Home /> },
       { path: "mypage", element: <Mypage /> },
+      { path: "stocks", element: <PortfolioPage /> },
+      { path: "stocks/balance", element: <PortfolioPage /> },
+      { path: "stocks/orders", element: <OrdersPage /> },
+      { path: "stocks/list", element: <StockListPage /> },
+      { path: "stocks/:code", element: <StockDetailPage /> },
     ],
   },
 ]);
 
 createRoot(document.getElementById("root")!).render(
-  <RouterProvider router={router} />
+  <RouterProvider router={router} />,
 );

@@ -1,4 +1,7 @@
+import { guestLogin } from "@/api/authApi";
 import { rocket, kakao } from "../assets";
+import { useAuthStore } from "@/store/authStore";
+import { useNavigate } from "react-router";
 
 const KAKAO_CLIENT_ID = import.meta.env.VITE_KAKAO_REST_API_KEY;
 const REDIRECT_URI = import.meta.env.VITE_KAKAO_REDIRECT_URI;
@@ -14,29 +17,58 @@ export default function LoginPage() {
     window.location.href = KAKAO_AUTH_URL;
   };
 
+  const setUser = useAuthStore((state) => state.setUser);
+  const navigate = useNavigate();
+
+  const handleGuestLogin = async () => {
+    try {
+      const data = await guestLogin();
+      // JWT + 유저 정보 localStorage에 저장
+      localStorage.setItem("accessToken", data.access_token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      setUser(data.user);
+
+      navigate("/home");
+      console.log("로그인 성공:", data);
+    } catch {
+      alert("로그인에 실패했어요. 다시 시도해주세요.");
+      navigate("/");
+    }
+  };
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-between px-7 pt-15 pb-12">
-      <div className="flex-1 flex flex-col items-center justify-center gap-10">
-        <img src={rocket} alt="로켓 이미지" className="w-70" />
+    <div className="flex h-full w-full items-center justify-center bg-gray-100">
+      <div className="relative flex h-full w-full max-w-md flex-col overflow-y-auto bg-white">
+        <div className="min-h-screen flex flex-col items-center justify-between px-7 pt-15 pb-12">
+          <div className="flex-1 flex flex-col items-center justify-center gap-10">
+            <img src={rocket} alt="로켓 이미지" className="w-70" />
 
-        <div className="text-center leading-relaxed ">
-          <p className="text-xl font-semibold text-blue-600 p-2">
-            매일 한 문제, 주식 감각 ON
-          </p>
-          <p className="text-xl font-semibold text-blue-600">
-            실전 투자 연습까지 한 번에
-          </p>
+            <div className="text-center leading-relaxed ">
+              <p className="text-xl font-semibold text-blue-600 p-2">
+                매일 한 문제, 주식 감각 ON
+              </p>
+              <p className="text-xl font-semibold text-blue-600">
+                실전 투자 연습까지 한 번에
+              </p>
+            </div>
+          </div>
+
+          <div className="w-full">
+            <button
+              onClick={handleKakaoLogin}
+              className="w-full bg-[#FEE500] cursor-pointer rounded-xl py-4 text-[17px] font-bold text-[#3C1E1E] flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+            >
+              <img src={kakao} alt="카카오 아이콘" className="w-6 h-6" />
+              카카오 로그인
+            </button>
+            <button
+              onClick={handleGuestLogin}
+              className="w-full bg-gray-100 cursor-pointer rounded-xl py-4 text-[17px] font-bold text-[#3C1E1E] flex items-center justify-center gap-2 active:scale-[0.98] transition-transform mt-4"
+            >
+              게스트 로그인
+            </button>
+          </div>
         </div>
-      </div>
-
-      <div className="w-full">
-        <button
-          onClick={handleKakaoLogin}
-          className="w-full bg-[#FEE500] cursor-pointer rounded-xl py-4 text-[17px] font-bold text-[#3C1E1E] flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
-        >
-          <img src={kakao} alt="카카오 아이콘" className="w-6 h-6" />
-          카카오 로그인
-        </button>
       </div>
     </div>
   );
