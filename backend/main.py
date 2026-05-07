@@ -10,9 +10,8 @@ from routers.websocket import router as websocket_router
 from routers.orders import router as orders_router
 from routers.quotes import router as quotes_router
 from contextlib import asynccontextmanager
-from core.trade_bot import trade_bot
+from core.trade_bot import get_trade_bot
 import asyncio
-from database import SessionLocal
 
 # 앱 시작 시 테이블 자동 생성
 Base.metadata.create_all(bind=engine)
@@ -20,8 +19,8 @@ Base.metadata.create_all(bind=engine)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    db = SessionLocal()
-    asyncio.create_task(trade_bot.start(db))
+    trade_bot = get_trade_bot()
+    asyncio.create_task(trade_bot.start())
     yield
 
 

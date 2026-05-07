@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from model import Order, Trade, Stock
 from core.trade_system import MatchingEngine
+from database import SessionLocal
 
 
 class TradeBot:
@@ -19,14 +20,16 @@ class TradeBot:
         self.trend_strength = 1.0  # 추세 강도
         self.trend_duration = 0  # 현재 추세 지속 시간
 
-    async def start(self, db: Session):
+    async def start(self):
         if self.is_running:
             return
         self.is_running = True
         print("🚀 Trade Bot 시작 - **추세 모드** 활성화")
 
         while self.is_running:
+            db: Session = None
             try:
+                db = SessionLocal()
                 stocks = db.query(Stock).all()
                 for stock in stocks:
                     await self._simulate_trending_market(db, stock.id)
@@ -36,6 +39,9 @@ class TradeBot:
             except Exception as e:
                 print(f"Trade Bot Error: {e}")
                 await asyncio.sleep(5)
+            finally:
+                if db:
+                    db.close()
 
     async def stop(self):
         self.is_running = False
