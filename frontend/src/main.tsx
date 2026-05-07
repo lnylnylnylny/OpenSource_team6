@@ -11,12 +11,15 @@ import { Mypage } from "./pages/Mypage.tsx";
 const router = createBrowserRouter([
   {
     path: "/",
+    element: <Login />,
+  },
+  { path: "oauth/kakao", element: <KakaoCallback /> },
+  {
+    path: "/",
     element: <App />,
     children: [
-      { index: true, element: <Login /> },
       { path: "quiz", element: <Quiz /> },
       { path: "home", element: <Home /> },
-      { path: "oauth/kakao", element: <KakaoCallback /> },
       { path: "mypage", element: <Mypage /> },
     ],
   },

@@ -1,4 +1,3 @@
-import { NavBar } from "../components/NavBar";
 import { QuizCard } from "../components/QuizCard"; 
 
 export const Quiz = () => {
@@ -8,7 +7,6 @@ export const Quiz = () => {
         {/* 퀴즈 카드 띄우기 */}
         <QuizCard />
       </main>
-      <NavBar />
     </div>
   );
 };

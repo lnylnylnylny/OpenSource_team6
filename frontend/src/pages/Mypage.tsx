@@ -1,6 +1,5 @@
 import { HoldingsTable } from "../components/HoldingStable";
 import { InvestmentSummary } from "../components/InvestmentSummary";
-import { NavBar } from "../components/NavBar";
 import { useAuthStore } from "../store/authStore";
 import { profile } from "../assets";
 import { EditProfile } from "../components/EditProfile";
@@ -49,7 +48,6 @@ export const Mypage = () => {
 
       <InvestmentSummary />
       <HoldingsTable />
-      <NavBar />
     </div>
   );
 };
