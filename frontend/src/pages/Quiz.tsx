@@ -62,7 +62,7 @@ export const Quiz = () => {
 
               {/* 문구 잘림 방지 및 텍스트 덩어리 유지 */}
               <h1 className="text-[21px] font-bold mb-2 break-keep leading-tight">
-                경제 퀴즈에 오신 걸 <span className="inline-block">환영해요! 💰</span>
+                금융 퀴즈에 오신 걸 <span className="inline-block">환영해요! 💰</span>
               </h1>
               
               <p className="text-gray-500 text-[15px] mb-8 break-keep">
