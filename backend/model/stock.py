@@ -42,7 +42,7 @@ class Stock(Base):
     market_cap = Column(BigInteger, default=0)
     
     updated_at = Column(
-        DateTime,
+        DateTime(timezone=True),
         nullable=False,
         default=func.now(),
         onupdate=func.now()
@@ -67,7 +67,7 @@ class Quote(Base):
         index=True
     )
 
-    quote_time = Column(DateTime, nullable=False, default=func.now(), index=True)
+    quote_time = Column(DateTime(timezone=True), nullable=False, default=func.now(), index=True)
     date_only = Column(Date, nullable=False, index=True, default=date.today)
 
     # 가격
@@ -123,8 +123,8 @@ class Order(Base):
         default="PENDING"
     )
     
-    created_at = Column(DateTime, default=func.now())
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), default=func.now())
+    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
 
     # Relationship
     stock = relationship("Stock", back_populates="orders")
@@ -147,7 +147,8 @@ class Trade(Base):
     price = Column(Numeric(12, 4), nullable=False)
     volume = Column(BigInteger, nullable=False)
     
-    trade_time = Column(DateTime, default=func.now())
+    trade_time = Column(DateTime(timezone=True)
+    , default=func.now())
 
     # Relationship
     stock = relationship("Stock")

@@ -2,17 +2,17 @@
 import asyncio
 import random
 from decimal import Decimal
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from model import Order, Trade, Stock
-from core.trade_system import MatchingEngine
+from core.trade_system import get_matching_engine
 from database import SessionLocal
 
 
 class TradeBot:
     def __init__(self):
-        self.matching_engine = MatchingEngine()
+        self.matching_engine = get_matching_engine()
         self.is_running = False
 
         # === 추세 관리 ===
@@ -20,28 +20,22 @@ class TradeBot:
         self.trend_strength = 1.0  # 추세 강도
         self.trend_duration = 0  # 현재 추세 지속 시간
 
-    async def start(self):
+    async def start(self, db: Session):
         if self.is_running:
             return
         self.is_running = True
-        print("🚀 Trade Bot 시작 - **추세 모드** 활성화")
+        print("Trade Bot 추세 모드 ON")
 
         while self.is_running:
-            db: Session = None
             try:
-                db = SessionLocal()
                 stocks = db.query(Stock).all()
                 for stock in stocks:
                     await self._simulate_trending_market(db, stock.id)
 
-                # 2~9초마다 실행 (더 자연스럽게)
                 await asyncio.sleep(random.uniform(2, 9))
             except Exception as e:
-                print(f"Trade Bot Error: {e}")
+                print(f"Bot 내부 에러: {e}")
                 await asyncio.sleep(5)
-            finally:
-                if db:
-                    db.close()
 
     async def stop(self):
         self.is_running = False
@@ -86,7 +80,7 @@ class TradeBot:
                 price=order_price,
                 volume=volume,
                 status="PENDING",
-                created_at=datetime.now(),
+                created_at=datetime.now(timezone.utc),
             )
             db.add(dummy_order)
             db.commit()
@@ -178,69 +172,55 @@ class TradeBot:
             stock_id=stock_id,
             price=trade_price,
             volume=volume,
-            trade_time=datetime.now(),
+            trade_time=datetime.now(timezone.utc),
         )
         db.add(trade)
         db.commit()
 
         await self.matching_engine.match_orders(db, stock_id)
-        print(f"🔥 강제 추세 체결: {volume}주 @ {trade_price} ({self._trend_name()})")
+        print(f"강제 추세 체결: {volume}주 @ {trade_price} ({self._trend_name()})")
 
+        
     async def create_instant_counter_order(
         self, db: Session, stock_id: int, user_order
     ):
-        """실제 유저가 주문 넣었을 때 → 바로 반대쪽 더미 주문 만들어 체결 유도"""
-
         dummy_user_id = random.choice([9991, 9992, 9993])
 
         if user_order.side == "BUY":
             side = "SELL"
-            # 유저 매수가격 근처 또는 조금 높게
-            price = (
-                user_order.price or (user_order.price + Decimal("20"))
-                if user_order.price
-                else Decimal("10500")
-            )
-        else:
-            side = "BUY"
-            price = (
-                user_order.price or (user_order.price - Decimal("20"))
-                if user_order.price
-                else Decimal("9500")
-            )
-
-        # 가격을 유저 주문과 최대한 가깝게 조정
-        if user_order.price:
-            if side == "SELL":
-                price = max(user_order.price - Decimal("30"), Decimal("1000"))
+            # ★★★ 핵심 개선: 유저 매수가보다 충분히 낮게 ★★★
+            if user_order.price:
+                price = user_order.price - Decimal("10")   # 스프레드 줄임
             else:
-                price = min(user_order.price + Decimal("30"), Decimal("100000"))
+                price = (user_order.price or Decimal("10500")) - Decimal("50")
+        else:  # SELL
+            side = "BUY"
+            if user_order.price:
+                price = user_order.price + Decimal("10")
+            else:
+                price = (user_order.price or Decimal("9500")) + Decimal("50")
 
-        volume = min(user_order.volume, random.randint(80, 400))  # 충분한 물량
+        volume = min(user_order.volume, random.randint(100, 500))
 
         dummy_order = Order(
             user_id=dummy_user_id,
             stock_id=stock_id,
             side=side,
             order_type="LIMIT",
-            price=price,
+            price=price.quantize(Decimal("1")),
             volume=volume,
             status="PENDING",
-            created_at=datetime.now(),
+            created_at=datetime.now(timezone.utc),
         )
         db.add(dummy_order)
         db.commit()
         db.refresh(dummy_order)
 
-        print(
-            f"⚡ 즉시 반대 주문 생성: {side} {volume}주 @ {price} (유저 {user_order.side} 주문 대응)"
-        )
+        print(f"즉시 반대 주문: {side} {volume}주 @ {dummy_order.price} "
+            f"(vs 유저 {user_order.side} @ {user_order.price})")
 
-        # 바로 매칭 실행
+        # 매칭 강제 실행
         await self.matching_engine.match_orders(db, stock_id)
-
-        return dummy_order
-
 
 trade_bot = TradeBot()
 

@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from auth.login import router as auth_router
-from database import Base, engine
+from database import Base, engine, SessionLocal
+from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from routers.users import router as users_router
@@ -10,21 +11,22 @@ from routers.websocket import router as websocket_router
 from routers.orders import router as orders_router
 from routers.quotes import router as quotes_router
 from contextlib import asynccontextmanager
-from core.trade_bot import get_trade_bot
-import asyncio
+from bot_runner import trade_bot_manager
 
 # 앱 시작 시 테이블 자동 생성
 Base.metadata.create_all(bind=engine)
 
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    trade_bot = get_trade_bot()
-    asyncio.create_task(trade_bot.start())
+    db = SessionLocal()
+    print("Started server!")
+    await trade_bot_manager.start(db)
     yield
-
+    print("Shutting down server...")
+    await trade_bot_manager.stop()
 
 app = FastAPI(title="Stock App", lifespan=lifespan)
+
 
 app.add_middleware(
     CORSMiddleware,

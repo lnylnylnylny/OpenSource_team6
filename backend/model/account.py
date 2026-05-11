@@ -16,7 +16,7 @@ class UserBalance(Base):
     total_pnl = Column(Numeric(15, 2), default=0)               # 총 손익
     total_pnl_rate = Column(Numeric(8, 4), default=0)           # 총 손익률(%)
 
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
 
     user = relationship("User", back_populates="balances")
 
@@ -43,7 +43,7 @@ class UserHolding(Base):
     pnl = Column(Numeric(15, 2), default=0)                     # unrealized PnL
     pnl_rate = Column(Numeric(8, 4), default=0)                 # 손익률(%)
 
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
 
     user = relationship("User", back_populates="holdings")
     stock = relationship("Stock")
@@ -67,7 +67,7 @@ class Transaction(Base):
     price = Column(Numeric(12, 4), nullable=True)
     
     description = Column(String(200))
-    created_at = Column(DateTime, default=func.now())
+    created_at = Column(DateTime(timezone=True), default=func.now())
 
     user = relationship("User")
     stock = relationship("Stock")

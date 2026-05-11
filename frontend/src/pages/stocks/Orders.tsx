@@ -22,7 +22,7 @@ export default function OrdersPage() {
   const getStatusColor = (status: string) => {
     if (status === "FILLED") return "bg-green-100 text-green-700";
     if (status === "PENDING") return "bg-blue-100 text-blue-700";
-    if (status === "PARTIAL") return "bg-amber-100 text-amber-700";
+    if (status === "CANCELLED") return "bg-red-100 text-red-700";
     return "bg-gray-100 text-gray-700";
   };
 
@@ -96,7 +96,7 @@ export default function OrdersPage() {
                     ? "체결완료"
                     : order.status === "PENDING"
                       ? "미체결"
-                      : "부분체결"}
+                      : "주문실패"}
                 </div>
               </div>
 

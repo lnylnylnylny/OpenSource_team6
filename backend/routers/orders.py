@@ -1,21 +1,21 @@
 # routers/orders.py
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Literal, List
 from decimal import Decimal
-from datetime import datetime
+from datetime import datetime, timezone
 
 from database import get_db
 from model import Order, Stock, User, UserHolding, UserBalance
-from core.trade_system import MatchingEngine
+from core.trade_system import get_matching_engine
 from websocket_manager import manager
 from core.jwt import get_current_user
 from core.trade_bot import TradeBot, get_trade_bot
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
-matching_engine = MatchingEngine()
+matching_engine = get_matching_engine()
 
 
 class OrderCreate(BaseModel):
@@ -44,7 +44,6 @@ class OrderResponse(BaseModel):
 @router.post("/", response_model=OrderResponse)
 async def create_order(
     order: OrderCreate,
-    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
     trade_bot: TradeBot = Depends(get_trade_bot),
@@ -56,12 +55,12 @@ async def create_order(
     if order.order_type == "LIMIT" and not order.price:
         raise HTTPException(400, "지정가는 가격이 필수입니다")
 
-    if order.side == "BUY":
+    if order.side == "BUY" and user.provider != "dummy":
         required_amount = (order.price or 0) * order.volume  # MARKET이면 나중에 처리
 
         if order.order_type == "MARKET":
             # MARKET 주문은 현재가로 계산 (간단히 stock.current_price 사용 예시)
-            current_price = getattr(stock, "current_price", None)
+            current_price = getattr(stock, "last_price", None)
             if not current_price:
                 raise HTTPException(400, "현재가를 가져올 수 없습니다")
             required_amount = current_price * order.volume
@@ -78,7 +77,7 @@ async def create_order(
                 status_code=400,
                 detail=f"보유 현금이 부족합니다. 필요: {required_amount:,}원, 보유: {balance.cash_balance:,.0f}원",
             )
-    elif order.side == "SELL":
+    elif order.side == "SELL" and user.provider != "dummy":
         # 보유 수량 확인
         portfolio = (
             db.query(UserHolding)
@@ -106,9 +105,10 @@ async def create_order(
     db.commit()
     db.refresh(new_order)
 
-    # 매칭 엔진 실행
-    background_tasks.add_task(matching_engine.match_orders, db, new_order.stock_id)
+    engine = get_matching_engine()
+    await engine.match_orders(db, new_order.stock_id)
 
+    # 반대 봇 주문 생성 후 매칭 (match_orders는 내부에서 호출됨)
     await trade_bot.create_instant_counter_order(db, new_order.stock_id, new_order)
 
     # WebSocket 브로드캐스트
@@ -120,7 +120,7 @@ async def create_order(
             "side": new_order.side,
             "price": float(new_order.price) if new_order.price else None,
             "volume": new_order.volume,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         },
     )
 

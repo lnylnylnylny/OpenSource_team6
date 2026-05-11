@@ -2,7 +2,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, func
 from decimal import Decimal
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import asyncio
 from typing import Optional, Tuple
 
@@ -17,6 +17,8 @@ from model import (
     User,
 )
 
+BOT_USER_IDS = {9991, 9992, 9993}
+
 
 class MatchingEngine:
     def __init__(self):
@@ -25,15 +27,17 @@ class MatchingEngine:
     async def match_orders(self, db: Session, stock_id: int):
         """주요 매칭 엔진 진입점"""
         async with self.lock:
+            self._cancel_expired_orders(db, stock_id)
+
             match_count = 0
             while True:
                 buy = self._get_active_orders(db, stock_id, "BUY")
                 sell = self._get_active_orders(db, stock_id, "SELL")
 
-                if not buy or not sell or buy.price < sell.price:
+                if not buy or not sell:
                     break
 
-                # 체결 불가 조건
+                # 체결 불가 조건: None 먼저 확인 후 가격 비교
                 if buy.price is None or sell.price is None or buy.price < sell.price:
                     break
 
@@ -53,7 +57,7 @@ class MatchingEngine:
                     stock_id=stock_id,
                     price=trade_price,
                     volume=trade_volume,
-                    trade_time=datetime.now(),
+                    trade_time=datetime.now(timezone.utc),
                 )
                 db.add(trade)
 
@@ -85,6 +89,45 @@ class MatchingEngine:
                     f"[MatchingEngine] {match_count}건 체결 완료 - Stock ID: {stock_id}"
                 )
 
+    def _cancel_expired_orders(self, db: Session, stock_id: int):
+        """사용자 주문은 90초, 봇 주문은 30초로 차등 적용"""
+        now = datetime.now(timezone.utc)
+
+        # 사용자 주문: 90초 타임아웃
+        user_expired = (
+            db.query(Order)
+            .filter(
+                Order.stock_id == stock_id,
+                Order.status.in_(["PENDING", "PARTIAL"]),
+                Order.user_id.notin_(BOT_USER_IDS),  # 실제 사용자
+                Order.created_at < now - timedelta(seconds=90),
+            )
+            .all()
+        )
+
+        # 봇 주문: 30초 타임아웃 (기존처럼 빠르게 정리)
+        bot_expired = (
+            db.query(Order)
+            .filter(
+                Order.stock_id == stock_id,
+                Order.status.in_(["PENDING", "PARTIAL"]),
+                Order.user_id.in_(BOT_USER_IDS),
+                Order.created_at < now - timedelta(seconds=30),
+            )
+            .all()
+        )
+
+        for order in user_expired + bot_expired:
+            old_status = order.status
+            order.status = "CANCELLED"
+            print(
+                f"⏰ 타임아웃 취소 → User{order.user_id} | {order.side} {order.volume}주 "
+                f"@ {order.price} (ID:{order.id}, {old_status}→CANCELLED)"
+            )
+
+        if user_expired or bot_expired:
+            db.commit()
+
     def _get_active_orders(self, db: Session, stock_id: int, side: str):
         query = db.query(Order).filter(
             Order.stock_id == stock_id,
@@ -93,9 +136,17 @@ class MatchingEngine:
         )
 
         if side == "BUY":
-            query = query.order_by(Order.order_type.desc(), Order.price.desc().nullslast(), Order.created_at.asc())
+            query = query.order_by(
+                Order.order_type.desc(),
+                Order.price.desc().nullslast(),
+                Order.created_at.asc(),
+            )
         else:
-            query = query.order_by(Order.order_type.desc(), Order.price.asc().nullslast(), Order.created_at.asc())
+            query = query.order_by(
+                Order.order_type.desc(),
+                Order.price.asc().nullslast(),
+                Order.created_at.asc(),
+            )
 
         return query.first()
 
@@ -105,30 +156,31 @@ class MatchingEngine:
         """체결 후 모든 자산 업데이트"""
         trade_amount = trade.price * trade.volume
 
-        # 1. 매수자 업데이트
-        self._update_holding(
-            db,
-            buy_order.user_id,
-            trade.stock_id,
-            trade.volume,
-            trade.price,
-            is_buy=True,
-        )
-        self._update_cash(db, buy_order.user_id, -trade_amount)
+        # 1. 매수자 업데이트 (봇 유저는 가상 자산 업데이트 제외)
+        if buy_order.user_id not in BOT_USER_IDS:
+            self._update_holding(
+                db,
+                buy_order.user_id,
+                trade.stock_id,
+                trade.volume,
+                trade.price,
+                is_buy=True,
+            )
+            self._update_cash(db, buy_order.user_id, -trade_amount)
+            self._recalculate_total_balance(db, buy_order.user_id)
 
-        # 2. 매도자 업데이트
-        self._update_holding(
-            db,
-            sell_order.user_id,
-            trade.stock_id,
-            trade.volume,
-            trade.price,
-            is_buy=False,
-        )
-        self._update_cash(db, sell_order.user_id, +trade_amount)
-
-        self._recalculate_total_balance(db, buy_order.user_id)
-        self._recalculate_total_balance(db, sell_order.user_id)
+        # 2. 매도자 업데이트 (봇 유저는 가상 자산 업데이트 제외)
+        if sell_order.user_id not in BOT_USER_IDS:
+            self._update_holding(
+                db,
+                sell_order.user_id,
+                trade.stock_id,
+                trade.volume,
+                trade.price,
+                is_buy=False,
+            )
+            self._update_cash(db, sell_order.user_id, +trade_amount)
+            self._recalculate_total_balance(db, sell_order.user_id)
 
         # 3. Stock & Quote 업데이트
         self._update_market_price(db, trade.stock_id, trade.price, trade.volume)
@@ -257,7 +309,7 @@ class MatchingEngine:
             .first()
         )
 
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         if latest_quote and (now - latest_quote.quote_time).total_seconds() < 3:
             # 같은 초에 합치기
             latest_quote.close_price = price
@@ -311,3 +363,14 @@ class MatchingEngine:
                 description=f"{trade.volume}주 매도 @ {trade.price}",
             )
         )
+
+
+_engine_instance: Optional["MatchingEngine"] = None
+
+
+def get_matching_engine() -> "MatchingEngine":
+    """앱 전체에서 단일 MatchingEngine 인스턴스(단일 Lock) 공유"""
+    global _engine_instance
+    if _engine_instance is None:
+        _engine_instance = MatchingEngine()
+    return _engine_instance

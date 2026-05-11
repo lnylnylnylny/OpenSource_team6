@@ -1,7 +1,7 @@
 # routers/quotes.py
 from fastapi import APIRouter, Query, Depends, HTTPException
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List
 from pydantic import BaseModel
 
@@ -49,7 +49,7 @@ def get_quote_history(
     if not stock:
         raise HTTPException(404, "종목 없음")
     
-    start_date = datetime.now() - timedelta(days=days)
+    start_date = datetime.now(timezone.utc) - timedelta(days=days)
     
     query = db.query(Quote).filter(
         Quote.stock_id == stock.id,
