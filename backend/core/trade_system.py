@@ -150,42 +150,29 @@ class MatchingEngine:
 
         return query.first()
 
-    def _process_trade(
-        self, db: Session, trade: Trade, buy_order: Order, sell_order: Order
-    ):
-        """체결 후 모든 자산 업데이트"""
+    def _process_trade(self, db: Session, trade: Trade, buy_order: Order, sell_order: Order):
         trade_amount = trade.price * trade.volume
 
-        # 1. 매수자 업데이트 (봇 유저는 가상 자산 업데이트 제외)
+        # ==================== 매수자 처리 ====================
         if buy_order.user_id not in BOT_USER_IDS:
-            self._update_holding(
-                db,
-                buy_order.user_id,
-                trade.stock_id,
-                trade.volume,
-                trade.price,
-                is_buy=True,
-            )
+            self._update_holding(db, buy_order.user_id, trade.stock_id, 
+                            trade.volume, trade.price, is_buy=True)
             self._update_cash(db, buy_order.user_id, -trade_amount)
+            db.flush()                    # ← 매우 중요!
             self._recalculate_total_balance(db, buy_order.user_id)
 
-        # 2. 매도자 업데이트 (봇 유저는 가상 자산 업데이트 제외)
+        # ==================== 매도자 처리 ====================
         if sell_order.user_id not in BOT_USER_IDS:
-            self._update_holding(
-                db,
-                sell_order.user_id,
-                trade.stock_id,
-                trade.volume,
-                trade.price,
-                is_buy=False,
-            )
+            self._update_holding(db, sell_order.user_id, trade.stock_id, 
+                            trade.volume, trade.price, is_buy=False)
             self._update_cash(db, sell_order.user_id, +trade_amount)
+            db.flush()                    # ← 매우 중요!
             self._recalculate_total_balance(db, sell_order.user_id)
 
-        # 3. Stock & Quote 업데이트
+        # 3. 시장 가격 업데이트
         self._update_market_price(db, trade.stock_id, trade.price, trade.volume)
 
-        # 4. 거래 내역 로그
+        # 4. 거래 로그
         self._log_transactions(db, trade, buy_order, sell_order, trade_amount)
 
     def _recalculate_total_balance(self, db: Session, user_id: int):

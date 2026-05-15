@@ -55,36 +55,39 @@ async def create_order(
     if order.order_type == "LIMIT" and not order.price:
         raise HTTPException(400, "지정가는 가격이 필수입니다")
 
-    if order.side == "BUY" and user.provider != "dummy":
-        required_amount = (order.price or 0) * order.volume  # MARKET이면 나중에 처리
+    # ==================== 즉시 체결 처리 ====================
+    executed_price = order.price
 
-        if order.order_type == "MARKET":
-            # MARKET 주문은 현재가로 계산 (간단히 stock.current_price 사용 예시)
-            current_price = getattr(stock, "last_price", None)
-            if not current_price:
-                raise HTTPException(400, "현재가를 가져올 수 없습니다")
-            required_amount = current_price * order.volume
+    if order.order_type == "MARKET":
+        executed_price = getattr(stock, "last_price", None) or getattr(
+            stock, "current_price", None
+        )
+        if not executed_price:
+            raise HTTPException(400, "현재가를 가져올 수 없습니다")
+
+    # BUY / SELL 검증
+    if order.side == "BUY" and user.provider != "dummy":
+        required_amount = executed_price * order.volume
 
         balance = db.query(UserBalance).filter_by(user_id=user.id).first()
+        if not balance or balance.cash_balance < required_amount:
+            raise HTTPException(
+                status_code=400,
+                detail=f"보유 현금이 부족합니다. 필요: {required_amount:,}원, 보유: {balance.cash_balance if balance else 0:,.0f}원",
+            )
 
-        if not balance:
-            raise HTTPException(
-                status_code=400,
-                detail=f"보유 현금이 부족합니다. 필요: {required_amount:,}원, 보유: 0원",
-            )
-        if balance.cash_balance < required_amount:
-            raise HTTPException(
-                status_code=400,
-                detail=f"보유 현금이 부족합니다. 필요: {required_amount:,}원, 보유: {balance.cash_balance:,.0f}원",
-            )
+        # 잔고 차감
+        balance.cash_balance -= required_amount
+
     elif order.side == "SELL" and user.provider != "dummy":
-        # 보유 수량 확인
         portfolio = (
             db.query(UserHolding)
-            .filter(UserHolding.user_id == user.id, UserHolding.stock_id == stock.id)
+            .filter(
+                UserHolding.user_id == user.id,
+                UserHolding.stock_id == stock.id,
+            )
             .first()
         )
-
         owned = portfolio.quantity if portfolio else 0
 
         if owned < order.volume:
@@ -93,33 +96,44 @@ async def create_order(
                 detail=f"보유 수량이 부족합니다. 주문: {order.volume}주, 보유: {owned}주",
             )
 
+        # 보유 수량 차감
+        if not portfolio:
+            portfolio = UserHolding(user_id=user.id, stock_id=stock.id, quantity=0)
+            db.add(portfolio)
+        portfolio.quantity -= order.volume
+
+    # ==================== 주문 생성 및 즉시 체결 ====================
     new_order = Order(
         user_id=user.id,
         stock_id=stock.id,
         side=order.side,
         order_type=order.order_type,
-        price=order.price,
+        price=executed_price,  # MARKET인 경우 실제 체결 가격 저장
         volume=order.volume,
+        filled_volume=order.volume,  # ← 무조건 전량 체결
+        status="FILLED",  # ← 즉시 체결 완료
+        created_at=datetime.now(timezone.utc),
     )
+
     db.add(new_order)
     db.commit()
     db.refresh(new_order)
 
-    engine = get_matching_engine()
-    await engine.match_orders(db, new_order.stock_id)
-
-    # 반대 봇 주문 생성 후 매칭 (match_orders는 내부에서 호출됨)
+    # ==================== 봇 반대 주문 (필요 시) ====================
+    # 사용자 주문은 이미 체결되었으므로, 봇에게만 반대 주문을 넣어 시장 유동성 유지
     await trade_bot.create_instant_counter_order(db, new_order.stock_id, new_order)
 
     # WebSocket 브로드캐스트
     await manager.broadcast(
         stock.code,
         {
-            "type": "new_order",
+            "type": "order_filled",
             "symbol": stock.code,
             "side": new_order.side,
-            "price": float(new_order.price) if new_order.price else None,
+            "price": float(new_order.price),
             "volume": new_order.volume,
+            "filled_volume": new_order.filled_volume,
+            "status": new_order.status,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         },
     )
@@ -137,6 +151,7 @@ async def create_order(
     }
 
 
+# 나머지 엔드포인트는 그대로 유지
 @router.get("/me", response_model=List[OrderResponse])
 def get_my_orders(
     status: str | None = None,
@@ -148,29 +163,26 @@ def get_my_orders(
     if status:
         query = query.filter(Order.status == status)
 
-    # stock_code를 포함하기 위해 join
     orders = (
         query.join(Stock, Order.stock_id == Stock.id)
         .order_by(Order.created_at.desc())
         .all()
     )
 
-    response_data = []
-    for order in orders:
-        data = {
-            "id": order.id,
-            "stock_code": order.stock.code,
-            "side": order.side,
-            "order_type": order.order_type,
-            "price": order.price,
-            "volume": order.volume,
-            "filled_volume": order.filled_volume,
-            "status": order.status,
-            "created_at": order.created_at,
+    return [
+        {
+            "id": o.id,
+            "stock_code": o.stock.code,
+            "side": o.side,
+            "order_type": o.order_type,
+            "price": o.price,
+            "volume": o.volume,
+            "filled_volume": o.filled_volume,
+            "status": o.status,
+            "created_at": o.created_at,
         }
-        response_data.append(data)
-
-    return response_data
+        for o in orders
+    ]
 
 
 @router.post("/{order_id}/cancel")

@@ -22,7 +22,7 @@ export default function StockDetailPage() {
   const [loading, setLoading] = useState(true);
 
   const [side, setSide] = useState<"BUY" | "SELL">("BUY");
-  const [orderType, setOrderType] = useState<"LIMIT" | "MARKET">("LIMIT");
+  const [orderType, setOrderType] = useState<"LIMIT" | "MARKET">("MARKET");
   const [price, setPrice] = useState(0);
   const [volume, setVolume] = useState(10);
 
@@ -77,16 +77,17 @@ export default function StockDetailPage() {
   const handleOrder = async () => {
     if (!stock) return;
     try {
-        await api.post(`/orders`, {
-          stock_code: stock.code,
-          side,
-          order_type: orderType,
-          price: orderType === "LIMIT" ? price : undefined,
-          volume,
-        });
-        alert("주문이 정상 접수되었습니다!");
+      await api.post(`/orders`, {
+        stock_code: stock.code,
+        side,
+        order_type: orderType,
+        price: orderType === "LIMIT" ? price : undefined,
+        volume,
+      });
+      alert("주문이 정상 접수되었습니다!");
+      navigate("/stocks/orders");
     } catch (e: any) {
-        alert(e.response?.data?.detail || "주문 중 오류가 발생했습니다.");
+      alert(e.response?.data?.detail || "주문 중 오류가 발생했습니다.");
     }
   };
 
@@ -175,7 +176,7 @@ export default function StockDetailPage() {
         </div>
 
         <div className="space-y-6">
-          <div>
+          {/* <div>
             <div className="text-sm text-gray-500 mb-2">주문 유형</div>
             <div className="flex gap-3">
               <button
@@ -191,7 +192,7 @@ export default function StockDetailPage() {
                 지정가
               </button>
             </div>
-          </div>
+          </div> */}
 
           {orderType === "LIMIT" && (
             <div>
