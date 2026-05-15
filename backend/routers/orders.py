@@ -110,8 +110,8 @@ async def create_order(
         order_type=order.order_type,
         price=executed_price,  # MARKET인 경우 실제 체결 가격 저장
         volume=order.volume,
-        filled_volume=order.volume,  # ← 무조건 전량 체결
-        status="FILLED",  # ← 즉시 체결 완료
+        filled_volume=0,
+        status="PENDING",
         created_at=datetime.now(timezone.utc),
     )
 

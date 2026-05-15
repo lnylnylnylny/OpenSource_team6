@@ -24,18 +24,18 @@ class TradeBot:
         if self.is_running:
             return
         self.is_running = True
-        print("Trade Bot 추세 모드 ON")
+        # print("Trade Bot 추세 모드 ON")
 
-        while self.is_running:
-            try:
-                stocks = db.query(Stock).all()
-                for stock in stocks:
-                    await self._simulate_trending_market(db, stock.id)
+        # while self.is_running:
+        #     try:
+        #         stocks = db.query(Stock).all()
+        #         for stock in stocks:
+        #             await self._simulate_trending_market(db, stock.id)
 
-                await asyncio.sleep(random.uniform(2, 9))
-            except Exception as e:
-                print(f"Bot 내부 에러: {e}")
-                await asyncio.sleep(5)
+        #         await asyncio.sleep(random.uniform(2, 9))
+        #     except Exception as e:
+        #         print(f"Bot 내부 에러: {e}")
+        #         await asyncio.sleep(5)
 
     async def stop(self):
         self.is_running = False
@@ -184,6 +184,7 @@ class TradeBot:
     async def create_instant_counter_order(
         self, db: Session, stock_id: int, user_order
     ):
+        print(f"유저 주문 감지 → {user_order.side} {user_order.volume}주 @ {user_order.price}")
         dummy_user_id = random.choice([9991, 9992, 9993])
 
         if user_order.side == "BUY":
@@ -206,7 +207,7 @@ class TradeBot:
             user_id=dummy_user_id,
             stock_id=stock_id,
             side=side,
-            order_type="LIMIT",
+            order_type="MARKET",
             price=price.quantize(Decimal("1")),
             volume=volume,
             status="PENDING",

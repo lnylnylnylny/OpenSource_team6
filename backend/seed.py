@@ -99,5 +99,5 @@ def insert_data():
 
 
 if __name__ == "__main__":
-    create_dummy_users()
+    # create_dummy_users()
     insert_data()

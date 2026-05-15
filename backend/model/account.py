@@ -1,6 +1,6 @@
 # 잔고 관련 테이블
 from sqlalchemy import Column, Integer, String, Numeric, DateTime, ForeignKey, BigInteger, Enum, UniqueConstraint
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import func
 from database import Base
 
@@ -69,6 +69,6 @@ class Transaction(Base):
     description = Column(String(200))
     created_at = Column(DateTime(timezone=True), default=func.now())
 
-    user = relationship("User")
+    user = relationship("User", backref=backref('transactions', cascade="all,delete"))
     stock = relationship("Stock")
 

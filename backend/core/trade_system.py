@@ -27,19 +27,23 @@ class MatchingEngine:
     async def match_orders(self, db: Session, stock_id: int):
         """주요 매칭 엔진 진입점"""
         async with self.lock:
-            self._cancel_expired_orders(db, stock_id)
+            # self._cancel_expired_orders(db, stock_id)
 
             match_count = 0
             while True:
                 buy = self._get_active_orders(db, stock_id, "BUY")
                 sell = self._get_active_orders(db, stock_id, "SELL")
 
+                print(
+                    f"[MatchingEngine] 매칭 시도 → BUY: {buy.id if buy else 'None'} @ {buy.price if buy else 'N/A'} | SELL: {sell.id if sell else 'None'} @ {sell.price if sell else 'N/A'}"
+                )
+
                 if not buy or not sell:
                     break
 
                 # 체결 불가 조건: None 먼저 확인 후 가격 비교
-                if buy.price is None or sell.price is None or buy.price < sell.price:
-                    break
+                # if buy.price is None or sell.price is None or buy.price < sell.price:
+                #     break
 
                 # 체결 수량 결정
                 trade_volume = min(
@@ -65,10 +69,8 @@ class MatchingEngine:
                 buy.filled_volume += trade_volume
                 sell.filled_volume += trade_volume
 
-                buy.status = "FILLED" if buy.filled_volume >= buy.volume else "PARTIAL"
-                sell.status = (
-                    "FILLED" if sell.filled_volume >= sell.volume else "PARTIAL"
-                )
+                buy.status = "FILLED"
+                sell.status = "FILLED"
 
                 # === 핵심: 사용자 자산 업데이트 ===
                 try:
@@ -150,23 +152,37 @@ class MatchingEngine:
 
         return query.first()
 
-    def _process_trade(self, db: Session, trade: Trade, buy_order: Order, sell_order: Order):
+    def _process_trade(
+        self, db: Session, trade: Trade, buy_order: Order, sell_order: Order
+    ):
         trade_amount = trade.price * trade.volume
 
         # ==================== 매수자 처리 ====================
         if buy_order.user_id not in BOT_USER_IDS:
-            self._update_holding(db, buy_order.user_id, trade.stock_id, 
-                            trade.volume, trade.price, is_buy=True)
+            self._update_holding(
+                db,
+                buy_order.user_id,
+                trade.stock_id,
+                trade.volume,
+                trade.price,
+                is_buy=True,
+            )
             self._update_cash(db, buy_order.user_id, -trade_amount)
-            db.flush()                    # ← 매우 중요!
+            db.flush()  # ← 매우 중요!
             self._recalculate_total_balance(db, buy_order.user_id)
 
         # ==================== 매도자 처리 ====================
         if sell_order.user_id not in BOT_USER_IDS:
-            self._update_holding(db, sell_order.user_id, trade.stock_id, 
-                            trade.volume, trade.price, is_buy=False)
+            self._update_holding(
+                db,
+                sell_order.user_id,
+                trade.stock_id,
+                trade.volume,
+                trade.price,
+                is_buy=False,
+            )
             self._update_cash(db, sell_order.user_id, +trade_amount)
-            db.flush()                    # ← 매우 중요!
+            db.flush()  # ← 매우 중요!
             self._recalculate_total_balance(db, sell_order.user_id)
 
         # 3. 시장 가격 업데이트
@@ -195,62 +211,89 @@ class MatchingEngine:
         price: Decimal,
         is_buy: bool,
     ):
-        """보유 종목 업데이트 - UniqueViolation 방지 + 정확한 평균단가/투자금액 계산"""
-
-        holding = (
-            db.query(UserHolding).filter_by(user_id=user_id, stock_id=stock_id).first()
-        )
-
-        if not holding:
-            holding = UserHolding(
-                user_id=user_id,
-                stock_id=stock_id,
-                quantity=0,
-                avg_price=price,
-                total_invested=Decimal("0"),
-                current_price=price,
+        """보유 종목 업데이트"""
+        try:
+            print(
+                f"[HOLDING START] User={user_id} Stock={stock_id} is_buy={is_buy} vol={volume} price={price}"
             )
-            db.add(holding)
-            db.flush()  # ID 생성을 위해 flush (선택사항)
 
-        if is_buy:
-            # ==================== 매수 ====================
-            new_total_cost = holding.total_invested + (price * volume)
-            holding.quantity += volume
-            holding.avg_price = new_total_cost / holding.quantity
-            holding.total_invested = new_total_cost
+            holding = (
+                db.query(UserHolding)
+                .filter_by(user_id=user_id, stock_id=stock_id)
+                .first()
+            )
 
-        else:
-            # ==================== 매도 ====================
-            if holding.quantity < volume:
-                raise ValueError(f"보유 수량 부족: {holding.quantity} < {volume}")
+            if not holding:
+                holding = UserHolding(
+                    user_id=user_id,
+                    stock_id=stock_id,
+                    quantity=0,
+                    avg_price=price,  # NOT NULL
+                    total_invested=Decimal("0"),
+                    current_price=price,
+                    current_value=Decimal("0"),  # 명시적으로 넣기
+                    pnl=Decimal("0"),
+                    pnl_rate=Decimal("0"),
+                    # updated_at은 DB default나 trigger가 처리
+                )
+                db.add(holding)
+                db.flush()  # INSERT 강제 + ID 확인용
+                print(f"[HOLDING] 새 보유종목 생성 성공 → ID={holding.id}")
 
-            # 매도 시 total_invested 비례 차감
-            sell_ratio = Decimal(volume) / holding.quantity
-            sell_invested = holding.total_invested * sell_ratio
+            # ====================== 매수 / 매도 처리 ======================
+            if is_buy:
+                new_total_cost = holding.total_invested + (price * volume)
+                holding.quantity += volume
+                if holding.quantity > 0:
+                    holding.avg_price = new_total_cost / Decimal(
+                        holding.quantity
+                    )
+                else:
+                    holding.avg_price = price
+                holding.total_invested = new_total_cost
+            else:
+                if holding.quantity < volume:
+                    raise ValueError(f"보유 수량 부족: {holding.quantity} < {volume}")
 
-            holding.quantity -= volume
-            holding.total_invested -= sell_invested
+                sell_ratio = Decimal(volume) / Decimal(holding.quantity)
+                sell_invested = holding.total_invested * sell_ratio
 
-            # 전량 매도하면 행 삭제 (선택)
-            if holding.quantity == 0:
-                db.delete(holding)
-                return
+                holding.quantity -= volume
+                holding.total_invested -= sell_invested
 
-        # ==================== 공통: 실시간 평가 업데이트 ====================
-        stock = db.query(Stock).get(stock_id)
-        current_price = stock.last_price or price
+                if holding.quantity == 0:
+                    db.delete(holding)
+                    print(f"[HOLDING] 전량 매도 → 삭제")
+                    return
 
-        holding.current_price = current_price
-        holding.current_value = holding.quantity * current_price
-        holding.pnl = holding.current_value - holding.total_invested
-        holding.pnl_rate = (
-            (holding.pnl / holding.total_invested * 100)
-            if holding.total_invested > 0
-            else Decimal("0")
-        )
+            # ====================== 실시간 평가치 업데이트 ======================
+            stock = db.query(Stock).get(stock_id)
+            current_price = (
+                stock.last_price if stock and stock.last_price is not None else price
+            )
 
-        # updated_at은 DB에서 자동 처리 (onupdate=func.now())
+            holding.current_price = current_price
+            holding.current_value = Decimal(holding.quantity) * current_price
+            holding.pnl = holding.current_value - holding.total_invested
+            holding.pnl_rate = (
+                (holding.pnl / holding.total_invested * Decimal("100"))
+                if holding.total_invested > 0
+                else Decimal("0")
+            )
+
+            print(
+                f"[HOLDING END] User={user_id} qty={holding.quantity} "
+                f"avg={holding.avg_price} value={holding.current_value} pnl={holding.pnl}"
+            )
+
+        except Exception as e:
+            print(
+                f"[HOLDING ERROR] User={user_id} Stock={stock_id} → {type(e).__name__}: {e}"
+            )
+            import traceback
+
+            traceback.print_exc()
+            raise  # 반드시 다시 raise 해야 rollback이 제대로 됨
 
     def _update_cash(self, db: Session, user_id: int, amount: Decimal):
         balance = db.query(UserBalance).filter_by(user_id=user_id).first()

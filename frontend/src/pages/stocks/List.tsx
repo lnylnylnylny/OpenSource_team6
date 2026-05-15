@@ -22,13 +22,7 @@ export default function StockListPage() {
     <div className="px-4 pt-4">
       {/* 상단 뒤로가기 헤더 */}
       <div className="flex items-center gap-3 mb-6">
-        <button
-          onClick={() => navigate(-1)}
-          className="p-2 -ml-2 text-gray-600 active:scale-95 transition-transform"
-        >
-          <FiArrowLeft className="w-6 h-6" />
-        </button>
-        <h1 className="text-2xl font-semibold text-gray-900">탐색하기</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">모의투자</h1>
       </div>
       {/* 검색창 */}
       <div className="relative mb-5">

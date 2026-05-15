@@ -14,21 +14,17 @@ import StockListPage from "./pages/stocks/List.tsx";
 import StockDetailPage from "./pages/stocks/Details.tsx";
 
 const router = createBrowserRouter([
-  {
-    path: "/",
-    element: <Login />,
-  },
   { path: "oauth/kakao", element: <KakaoCallback /> },
+  { path: "/", element: <Splash /> },
+  { path: "/login", element: <Login /> },
   {
     path: "/",
     element: <App />,
     children: [
-      { index: true, element: <Splash /> },
-      { path: "login", element: <Login /> },
       { path: "quiz", element: <Quiz /> },
       { path: "home", element: <Home /> },
       { path: "mypage", element: <Mypage /> },
-      { path: "stocks", element: <PortfolioPage /> },
+      { path: "stocks", element: <StockListPage /> },
       { path: "stocks/balance", element: <PortfolioPage /> },
       { path: "stocks/orders", element: <OrdersPage /> },
       { path: "stocks/list", element: <StockListPage /> },
