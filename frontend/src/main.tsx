@@ -4,9 +4,10 @@ import App from "./App.tsx";
 import { createBrowserRouter, RouterProvider } from "react-router";
 import { Home } from "./pages/Home.tsx";
 import { Quiz } from "./pages/Quiz.tsx";
-import Login from "./pages/Login.tsx";
-import KakaoCallback from "./pages/KakaoCallback.tsx";
+import { Login } from "./pages/Login.tsx";
+import { KakaoCallback } from "./pages/KakaoCallback.tsx";
 import { Mypage } from "./pages/Mypage.tsx";
+import { Splash } from "./pages/Splash.tsx";
 import PortfolioPage from "./pages/stocks/Portfolio.tsx";
 import OrdersPage from "./pages/stocks/Orders.tsx";
 import StockListPage from "./pages/stocks/List.tsx";
@@ -22,6 +23,8 @@ const router = createBrowserRouter([
     path: "/",
     element: <App />,
     children: [
+      { index: true, element: <Splash /> },
+      { path: "login", element: <Login /> },
       { path: "quiz", element: <Quiz /> },
       { path: "home", element: <Home /> },
       { path: "mypage", element: <Mypage /> },

@@ -12,6 +12,7 @@ from routers.orders import router as orders_router
 from routers.quotes import router as quotes_router
 from contextlib import asynccontextmanager
 from bot_runner import trade_bot_manager
+from routers.quiz import router as quiz_router
 
 # 앱 시작 시 테이블 자동 생성
 Base.metadata.create_all(bind=engine)
@@ -49,6 +50,7 @@ app.include_router(websocket_router)
 app.include_router(orders_router)
 app.include_router(quotes_router)
 
+app.include_router(quiz_router)
 
 @app.get("/")
 def root():
