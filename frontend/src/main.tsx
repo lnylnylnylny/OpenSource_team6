@@ -8,22 +8,31 @@ import { Login } from "./pages/Login.tsx";
 import { KakaoCallback } from "./pages/KakaoCallback.tsx";
 import { Mypage } from "./pages/Mypage.tsx";
 import { Splash } from "./pages/Splash.tsx";
+import PortfolioPage from "./pages/stocks/Portfolio.tsx";
+import OrdersPage from "./pages/stocks/Orders.tsx";
+import StockListPage from "./pages/stocks/List.tsx";
+import StockDetailPage from "./pages/stocks/Details.tsx";
 
 const router = createBrowserRouter([
+  { path: "oauth/kakao", element: <KakaoCallback /> },
+  { path: "/", element: <Splash /> },
+  { path: "/login", element: <Login /> },
   {
     path: "/",
     element: <App />,
     children: [
-      { index: true, element: <Splash /> },
-      { path: "login", element: <Login /> },
       { path: "quiz", element: <Quiz /> },
       { path: "home", element: <Home /> },
-      { path: "oauth/kakao", element: <KakaoCallback /> },
       { path: "mypage", element: <Mypage /> },
+      { path: "stocks", element: <StockListPage /> },
+      { path: "stocks/balance", element: <PortfolioPage /> },
+      { path: "stocks/orders", element: <OrdersPage /> },
+      { path: "stocks/list", element: <StockListPage /> },
+      { path: "stocks/:code", element: <StockDetailPage /> },
     ],
   },
 ]);
 
 createRoot(document.getElementById("root")!).render(
-  <RouterProvider router={router} />
+  <RouterProvider router={router} />,
 );

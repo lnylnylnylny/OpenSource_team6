@@ -1,10 +1,11 @@
 import { HoldingsTable } from "../components/HoldingStable";
 import { InvestmentSummary } from "../components/InvestmentSummary";
-import { NavBar } from "../components/NavBar";
 import { useAuthStore } from "../store/authStore";
 import { profile } from "../assets";
 import { EditProfile } from "../components/EditProfile";
 import { useState } from "react";
+import StockDetailPage from "./stocks/Details";
+import PortfolioPage from "./stocks/Portfolio";
 
 export const Mypage = () => {
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -47,9 +48,7 @@ export const Mypage = () => {
         </div>
       </div>
 
-      <InvestmentSummary />
-      <HoldingsTable />
-      <NavBar />
+      <PortfolioPage />
     </div>
   );
 };

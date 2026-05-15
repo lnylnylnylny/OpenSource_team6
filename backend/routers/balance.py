@@ -1,0 +1,154 @@
+# routers/balance.py
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from pydantic import BaseModel
+from decimal import Decimal
+from typing import List, Optional
+from datetime import datetime
+
+from database import get_db
+from core.jwt import get_current_user
+from model import User, UserBalance, UserHolding, Transaction, Stock
+
+router = APIRouter(prefix="/balance", tags=["balance"])
+
+
+# ====================== Response Models ======================
+class BalanceResponse(BaseModel):
+    total_balance: Decimal
+    cash_balance: Decimal
+    total_pnl: Decimal
+    total_pnl_rate: Decimal
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class HoldingResponse(BaseModel):
+    stock_code: str
+    stock_name: str
+    quantity: int
+    avg_price: Decimal
+    current_price: Decimal | None
+    current_value: Decimal | None
+    pnl: Decimal
+    pnl_rate: Decimal
+
+    class Config:
+        from_attributes = True
+
+
+class TransactionResponse(BaseModel):
+    id: int
+    type: str
+    amount: Decimal
+    quantity: int | None
+    price: Decimal | None
+    description: str | None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ====================== API ======================
+@router.get("/me", response_model=BalanceResponse)
+def get_my_balance(
+    db: Session = Depends(get_db), user: User = Depends(get_current_user)
+):
+    balance = (
+        db.query(UserBalance).filter(UserBalance.user_id == user.id).first()
+    )
+    if not balance:
+        # 최초 접속 시 자동 생성
+        user = db.query(User).get(user.id)
+        balance = UserBalance(
+            user_id=user.id,
+            total_balance=user.initial_balance,
+            cash_balance=user.initial_balance,
+        )
+        db.add(balance)
+        db.commit()
+        db.refresh(balance)
+    return balance
+
+
+@router.get("/holdings", response_model=List[HoldingResponse])
+def get_my_holdings(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    holdings = (
+        db.query(UserHolding)
+        .filter(UserHolding.user_id == user.id, UserHolding.quantity > 0)
+        .all()
+    )
+
+    result = []
+    for h in holdings:
+        stock = h.stock
+        result.append(
+            {
+                "stock_code": stock.code,
+                "stock_name": stock.name,
+                "quantity": h.quantity,
+                "avg_price": h.avg_price,
+                "current_price": stock.last_price,
+                "current_value": h.quantity * (stock.last_price or h.avg_price),
+                "pnl": h.pnl,
+                "pnl_rate": h.pnl_rate,
+            }
+        )
+    return result
+
+
+@router.get("/transactions", response_model=List[TransactionResponse])
+def get_transactions(
+    limit: int = 50, db: Session = Depends(get_db), user: User = Depends(get_current_user)
+):
+    return (
+        db.query(Transaction)
+        .filter(Transaction.user_id == user.id)
+        .order_by(Transaction.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+
+# ====================== 입출금 API ======================
+class DepositWithdrawRequest(BaseModel):
+    amount: Decimal
+    type: str  # "DEPOSIT" or "WITHDRAW"
+
+
+@router.post("/deposit-withdraw")
+def deposit_withdraw(
+    req: DepositWithdrawRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)
+):
+    if req.amount <= 0:
+        raise HTTPException(400, "금액은 0보다 커야 합니다")
+
+    balance = (
+        db.query(UserBalance).filter(UserBalance.user_id == user.id).first()
+    )
+    if not balance:
+        raise HTTPException(404, "잔고 정보를 찾을 수 없습니다")
+
+    if req.type == "WITHDRAW" and balance.cash_balance < req.amount:
+        raise HTTPException(400, "출금 가능한 잔고가 부족합니다")
+
+    if req.type == "DEPOSIT":
+        balance.cash_balance += req.amount
+        balance.total_balance += req.amount
+    else:  # WITHDRAW
+        balance.cash_balance -= req.amount
+        balance.total_balance -= req.amount
+
+    transaction = Transaction(
+        user_id=user.id,
+        type=req.type,
+        amount=req.amount,
+        description=f"{req.type} {req.amount:,}원",
+    )
+    db.add(transaction)
+    db.commit()
+
+    return {"message": f"{req.type} 완료", "new_cash": balance.cash_balance}

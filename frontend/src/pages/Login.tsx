@@ -1,6 +1,9 @@
+import { guestLogin } from "@/api/authApi";
 import { useEffect, useState } from "react";
 import { kakao } from "../assets";
 import { FloatingRocket } from "../components/FloatingRocket";
+import { useAuthStore } from "@/store/authStore";
+import { useNavigate } from "react-router";
 
 const KAKAO_CLIENT_ID = import.meta.env.VITE_KAKAO_REST_API_KEY;
 const REDIRECT_URI = import.meta.env.VITE_KAKAO_REDIRECT_URI;
@@ -21,6 +24,25 @@ export const Login = () => {
 
   const handleKakaoLogin = () => {
     window.location.href = KAKAO_AUTH_URL;
+  };
+
+  const setUser = useAuthStore((state) => state.setUser);
+  const navigate = useNavigate();
+
+  const handleGuestLogin = async () => {
+    try {
+      const data = await guestLogin();
+      // JWT + 유저 정보 localStorage에 저장
+      localStorage.setItem("accessToken", data.access_token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      setUser(data.user);
+
+      navigate("/home");
+      console.log("로그인 성공:", data);
+    } catch {
+      alert("로그인에 실패했어요. 다시 시도해주세요.");
+      navigate("/");
+    }
   };
 
   return (

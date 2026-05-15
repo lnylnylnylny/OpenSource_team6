@@ -87,9 +87,6 @@ export const Quiz = () => {
           </div>
         )}
       </main>
-      
-      {/* 하단 네비게이션 바 */}
-      <NavBar />
     </div>
   );
 };

@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from database import get_db
-import models
+import model
 import schemas
 from typing import List
 from typing import List, Optional
@@ -19,11 +19,11 @@ def get_random_quiz(difficulty: Optional[str] = None, db: Session = Depends(get_
     쿼리 파라미터로 difficulty(상, 중, 하)를 전달하면 해당 난이도 내에서 랜덤으로 뽑습니다.
     예: /api/quizzes/random?difficulty=하
     """
-    query = db.query(models.Quiz)
+    query = db.query(model.Quiz)
     
     # 난이도가 파라미터로 들어온 경우 필터링 추가
     if difficulty:
-        query = query.filter(models.Quiz.difficulty == difficulty)
+        query = query.filter(model.Quiz.difficulty == difficulty)
     
     quiz = query.order_by(func.random()).first()
     
@@ -37,11 +37,11 @@ def get_all_quizzes(db: Session = Depends(get_db)):
     """
     데이터베이스에서 모든 퀴즈 목록을 가져옵니다.
     """
-    return db.query(models.Quiz).all()
+    return db.query(model.Quiz).all()
 
 @router.get("/difficulty/{level}", response_model=List[schemas.QuizResponse])
 def get_quizzes_by_difficulty(level: str, db: Session = Depends(get_db)):
     """
     난이도(상, 중, 하)에 따른 퀴즈 목록을 필터링합니다.
     """
-    return db.query(models.Quiz).filter(models.Quiz.difficulty == level).all()
+    return db.query(model.Quiz).filter(model.Quiz.difficulty == level).all()

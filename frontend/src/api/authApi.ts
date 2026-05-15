@@ -19,3 +19,8 @@ export const kakaoLogin = async (code: string): Promise<AuthResponse> => {
   });
   return response.data;
 };
+
+export const guestLogin = async (): Promise<AuthResponse> => {
+  const response = await axios.get<AuthResponse>(`${BASE_URL}/auth/guest`);
+  return response.data;
+};
