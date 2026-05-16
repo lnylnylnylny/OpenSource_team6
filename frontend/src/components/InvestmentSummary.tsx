@@ -11,7 +11,8 @@ export const InvestmentSummary = ({ balance }: InvestmentSummaryProps) => {
   const totalPnlRate = Number(balance.total_pnl_rate);
 
   const investedAmount = totalBalance - cashBalance;
-  const investedRatio = totalBalance > 0 ? Math.round((investedAmount / totalBalance) * 100) : 0;
+  const investedRatio =
+    totalBalance > 0 ? Math.round((investedAmount / totalBalance) * 100) : 0;
   const isProfit = totalPnl >= 0;
 
   return (
@@ -43,12 +44,20 @@ export const InvestmentSummary = ({ balance }: InvestmentSummaryProps) => {
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-white border border-gray-100 rounded-2xl p-4">
           <p className="text-xs text-gray-400 mb-1">평가 손익</p>
-          <p className={`text-2xl font-bold ${isProfit ? "text-[#1D9E75]" : "text-red-500"}`}>
+          <p
+            className={`text-2xl font-bold ${
+              isProfit ? "text-[#1D9E75]" : "text-red-500"
+            }`}
+          >
             {isProfit ? "+" : ""}
             {totalPnl.toLocaleString()}
             <span className="text-sm font-medium ml-1">원</span>
           </p>
-          <p className={`text-xs mt-1 ${isProfit ? "text-[#1D9E75]" : "text-red-500"}`}>
+          <p
+            className={`text-xs mt-1 ${
+              isProfit ? "text-[#1D9E75]" : "text-red-500"
+            }`}
+          >
             {isProfit ? "▲" : "▼"} {Math.abs(totalPnlRate).toFixed(2)}%
           </p>
         </div>
