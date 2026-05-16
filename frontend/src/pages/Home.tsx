@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { useAuthStore } from "../store/authStore";
-import { NavBar } from "../components/NavBar";
+
 import {
   RecentTransactions,
   type Transaction,
@@ -137,8 +137,6 @@ export const Home = () => {
         {/* 최근 내역 */}
         <RecentTransactions transactions={recentTransactions} />
       </div>
-
-      <NavBar />
     </div>
   );
 };

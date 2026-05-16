@@ -5,7 +5,6 @@ import { profile } from "../assets";
 import { EditProfile } from "../components/EditProfile";
 import { InvestmentSummary } from "../components/InvestmentSummary";
 import { HoldingsTable } from "../components/HoldingStable";
-import { NavBar } from "../components/NavBar";
 import api from "../api";
 import type { Balance, Holding } from "../types/stocks";
 import { FiSearch, FiClipboard } from "react-icons/fi";
@@ -93,8 +92,6 @@ export const Mypage = () => {
         holdings={holdings}
         onSelect={(h) => navigate(`/stocks/${h.stock_code}`)}
       />
-
-      <NavBar />
     </div>
   );
 };
