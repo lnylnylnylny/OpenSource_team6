@@ -2,42 +2,64 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { useAuthStore } from "../store/authStore";
 import { NavBar } from "../components/NavBar";
-import { Attendance } from "../components/Attendance";
+import {
+  RecentTransactions,
+  type Transaction,
+} from "../components/RecentTransactions";
 import api from "../api";
 
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 6) return { message: "조용한 새벽이에요", emoji: "🌙" };
+  if (hour < 12) return { message: "좋은 아침이에요", emoji: "☀️" };
+  if (hour < 18) return { message: "맛있는 점심이에요", emoji: "🌤️" };
+  if (hour < 22) return { message: "좋은 저녁이에요", emoji: "🌆" };
+  return { message: "편안한 밤이에요", emoji: "🌙" };
+};
+
 export const Home = () => {
+  const { message: greetingMessage, emoji: greetingEmoji } = getGreeting();
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const [cashBalance, setCashBalance] = useState<number | null>(null);
   const [todayEarned, setTodayEarned] = useState<number>(0);
-
-  const streakDays = 5;
-  const thisWeek = [true, true, true, true, false, false, false];
-  const todayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
+  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>(
+    []
+  );
 
   useEffect(() => {
-    api.get("/balance/me").then((res) => {
-      setCashBalance(Number(res.data.cash_balance));
-    }).catch(() => {});
+    api
+      .get("/balance/me")
+      .then((res) => {
+        setCashBalance(Number(res.data.cash_balance));
+      })
+      .catch(() => {});
 
-    api.get("/balance/transactions").then((res) => {
-      const today = new Date().toDateString();
-      const earned = res.data
-        .filter((t: { type: string; description?: string; created_at: string }) =>
-          t.type === "DEPOSIT" &&
-          t.description?.includes("퀴즈 보상") &&
-          new Date(t.created_at).toDateString() === today
-        )
-        .reduce((sum: number, t: { amount: string }) => sum + Number(t.amount), 0);
-      setTodayEarned(earned);
-    }).catch(() => {});
+    api
+      .get("/balance/transactions")
+      .then((res) => {
+        const today = new Date().toDateString();
+        const earned = res.data
+          .filter(
+            (t: Transaction) =>
+              t.type === "DEPOSIT" &&
+              t.description?.includes("퀴즈 보상") &&
+              new Date(t.created_at).toDateString() === today
+          )
+          .reduce((sum: number, t: Transaction) => sum + Number(t.amount), 0);
+        setTodayEarned(earned);
+        setRecentTransactions(res.data.slice(0, 5));
+      })
+      .catch(() => {});
   }, []);
 
   return (
     <div className="min-h-screen flex flex-col">
       {/* 상단 인사말 */}
-      <div className="px-5 pt-12 pb-4 border-b border-gray-100">
-        <p className="text-xs text-gray-400 mb-1">좋은 아침이에요 ☀️</p>
+      <div className="px-5 pt-12 pb-4 bg-white border-b border-gray-100">
+        <p className="text-xs text-gray-400 mb-1">
+          {greetingMessage} {greetingEmoji}
+        </p>
         <p className="text-xl font-bold text-gray-900">
           안녕하세요,{" "}
           <span className="text-blue-600">{user?.nickname ?? "업폴"}님</span>!
@@ -86,35 +108,34 @@ export const Home = () => {
           </p>
         </div>
 
-        {/* 퀴즈 이동 버튼 */}
+        {/* 퀴즈 카드 */}
         <button
           onClick={() => navigate("/quiz")}
-          className="w-full bg-blue-50 rounded-2xl px-5 py-4 flex items-center justify-between active:scale-[0.98] transition-transform"
+          className="w-full bg-white border border-gray-100 rounded-[20px] px-5 py-4 flex items-center justify-between active:scale-[0.98] transition-transform text-left"
         >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full flex items-center justify-center text-xl">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-full bg-blue-500 flex items-center justify-center text-xl shrink-0">
               🚀
             </div>
-            <div className="text-left">
-              <p className="text-[15px] font-bold text-blue-700">
-                오늘의 퀴즈 풀기
-              </p>
-              <p className="text-[11px] text-gray-500 mt-0.5">
-                주식 감각을 키워보세요
+            <div>
+              <div className="flex items-center gap-2 mb-0.5">
+                <p className="text-[15px] font-bold text-gray-900">
+                  오늘의 퀴즈 풀기
+                </p>
+                <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                  미션
+                </span>
+              </div>
+              <p className="text-[12px] text-gray-400">
+                주식 감각을 키우고 보상을 받아보세요
               </p>
             </div>
           </div>
-          <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center">
-            <span className="text-blue-700 text-2xl">⭢</span>
-          </div>
+          <span className="text-gray-300 text-xl ml-2">›</span>
         </button>
 
-        {/* 출석 스트릭 */}
-        <Attendance
-          streakDays={streakDays}
-          thisWeek={thisWeek}
-          todayIndex={todayIndex}
-        />
+        {/* 최근 내역 */}
+        <RecentTransactions transactions={recentTransactions} />
       </div>
 
       <NavBar />

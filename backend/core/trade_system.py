@@ -368,6 +368,9 @@ class MatchingEngine:
         amount: Decimal,
     ):
         """거래 로그 기록"""
+        stock = db.query(Stock).filter_by(id=trade.stock_id).first()
+        stock_name = stock.name if stock else ""
+
         # 매수자 로그
         db.add(
             Transaction(
@@ -377,7 +380,7 @@ class MatchingEngine:
                 amount=-amount,
                 quantity=trade.volume,
                 price=trade.price,
-                description=f"{trade.volume}주 매수 @ {trade.price}",
+                description=f"{stock_name} {trade.volume}주 매수",
             )
         )
 
@@ -390,7 +393,7 @@ class MatchingEngine:
                 amount=amount,
                 quantity=trade.volume,
                 price=trade.price,
-                description=f"{trade.volume}주 매도 @ {trade.price}",
+                description=f"{stock_name} {trade.volume}주 매도",
             )
         )
 
