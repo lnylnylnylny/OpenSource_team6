@@ -1,16 +1,25 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+from pydantic import BaseModel
 from database import get_db
+from core.jwt import get_current_user
+from model import User, UserBalance, Transaction
 import model
 import schemas
-from typing import List
 from typing import List, Optional
 
 router = APIRouter(
     prefix="/api/quizzes",
     tags=["quizzes"]
 )
+
+QUIZ_REWARDS = {"하": 1000, "중": 3000, "상": 500000}
+
+
+class QuizSubmitRequest(BaseModel):
+    quiz_id: int
+    selected_answer: int
 
 @router.get("/random", response_model=schemas.QuizResponse)
 def get_random_quiz(difficulty: Optional[str] = None, db: Session = Depends(get_db)):
@@ -45,3 +54,43 @@ def get_quizzes_by_difficulty(level: str, db: Session = Depends(get_db)):
     난이도(상, 중, 하)에 따른 퀴즈 목록을 필터링합니다.
     """
     return db.query(model.Quiz).filter(model.Quiz.difficulty == level).all()
+
+
+@router.post("/submit")
+def submit_quiz(
+    req: QuizSubmitRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    quiz = db.query(model.Quiz).filter(model.Quiz.id == req.quiz_id).first()
+    if not quiz:
+        raise HTTPException(status_code=404, detail="퀴즈를 찾을 수 없습니다.")
+
+    is_correct = req.selected_answer == quiz.answer
+    reward = 0
+
+    if is_correct:
+        reward = QUIZ_REWARDS.get(quiz.difficulty, 0)
+
+        balance = db.query(UserBalance).filter(UserBalance.user_id == user.id).first()
+        if not balance:
+            balance = UserBalance(
+                user_id=user.id,
+                total_balance=user.initial_balance + reward,
+                cash_balance=user.initial_balance + reward,
+            )
+            db.add(balance)
+        else:
+            balance.cash_balance += reward
+            balance.total_balance += reward
+
+        transaction = Transaction(
+            user_id=user.id,
+            type="DEPOSIT",
+            amount=reward,
+            description=f"퀴즈 보상 (난이도: {quiz.difficulty})",
+        )
+        db.add(transaction)
+        db.commit()
+
+    return {"is_correct": is_correct, "reward": reward}

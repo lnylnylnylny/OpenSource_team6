@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 
 interface QuizProps {
   quiz: {
+    id: number;
     question: string;
     options: string;
     answer: number;
@@ -14,13 +16,31 @@ interface QuizProps {
 export const QuizCard = ({ quiz, onNext }: QuizProps) => {
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [reward, setReward] = useState<number>(0);
 
   const optionsArray = quiz.options.split(',');
 
   const handleNext = () => {
     setIsSubmitted(false);
     setSelectedIdx(null);
+    setReward(0);
     onNext();
+  };
+
+  const handleSubmit = async () => {
+    if (selectedIdx === null) return;
+    const token = localStorage.getItem('accessToken');
+    try {
+      const res = await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/quizzes/submit`,
+        { quiz_id: quiz.id, selected_answer: selectedIdx },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setReward(res.data.reward ?? 0);
+    } catch {
+      setReward(0);
+    }
+    setIsSubmitted(true);
   };
 
   return (
@@ -86,6 +106,11 @@ export const QuizCard = ({ quiz, onNext }: QuizProps) => {
             <span className={`block mb-1 font-bold ${selectedIdx === quiz.answer ? "text-green-600" : "text-red-600"}`}>
               {selectedIdx === quiz.answer ? "정답이에요! 🎉" : "아쉬워요.. 😢"}
             </span>
+            {selectedIdx === quiz.answer && reward > 0 && (
+              <span className="block mb-2 text-[14px] font-semibold text-green-500">
+                +{reward.toLocaleString()}원이 지급되었어요!
+              </span>
+            )}
             <p className="text-gray-600 text-[14px] leading-[20px] break-keep">
               {quiz.explanation}
             </p>
@@ -93,9 +118,9 @@ export const QuizCard = ({ quiz, onNext }: QuizProps) => {
         )}
 
         {/* 제출/다음 버튼 */}
-        <button 
-          onClick={isSubmitted ? handleNext : () => setIsSubmitted(true)}
-          className={`w-full h-[56px] mt-8 mb-4 rounded-[15px] text-white text-[17px] font-bold transition-all active:scale-95 
+        <button
+          onClick={isSubmitted ? handleNext : handleSubmit}
+          className={`w-full h-[56px] mt-8 mb-4 rounded-[15px] text-white text-[17px] font-bold transition-all active:scale-95
           ${selectedIdx !== null ? "bg-[#0064FF] shadow-lg shadow-blue-200 cursor-pointer" : "bg-gray-300 cursor-not-allowed"}
           `}
           disabled={selectedIdx === null}

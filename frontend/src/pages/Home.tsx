@@ -1,18 +1,37 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { useAuthStore } from "../store/authStore";
 import { NavBar } from "../components/NavBar";
 import { Attendance } from "../components/Attendance";
+import api from "../api";
 
 export const Home = () => {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
+  const [cashBalance, setCashBalance] = useState<number | null>(null);
+  const [todayEarned, setTodayEarned] = useState<number>(0);
 
-  // 임시 더미 데이터 — 나중에 API 연결
-  const seedMoney = 1_248_500;
-  const todayEarned = 12_000;
   const streakDays = 5;
   const thisWeek = [true, true, true, true, false, false, false];
   const todayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
+
+  useEffect(() => {
+    api.get("/balance/me").then((res) => {
+      setCashBalance(Number(res.data.cash_balance));
+    }).catch(() => {});
+
+    api.get("/balance/transactions").then((res) => {
+      const today = new Date().toDateString();
+      const earned = res.data
+        .filter((t: { type: string; description?: string; created_at: string }) =>
+          t.type === "DEPOSIT" &&
+          t.description?.includes("퀴즈 보상") &&
+          new Date(t.created_at).toDateString() === today
+        )
+        .reduce((sum: number, t: { amount: string }) => sum + Number(t.amount), 0);
+      setTodayEarned(earned);
+    }).catch(() => {});
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -56,7 +75,7 @@ export const Home = () => {
           </p>
           <p className="text-[32px] font-extrabold text-white leading-none">
             <span className="text-lg font-semibold opacity-85 mr-0.5">₩</span>
-            {seedMoney.toLocaleString()}
+            {cashBalance !== null ? cashBalance.toLocaleString() : "—"}
           </p>
           <p className="text-xs text-white/60 mt-1.5">
             오늘 퀴즈로{" "}
