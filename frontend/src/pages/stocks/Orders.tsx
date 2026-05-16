@@ -11,19 +11,41 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState<"ALL" | "PENDING" | "FILLED">("ALL");
 
-  useEffect(() => {
+  const fetchOrders = () => {
     api
       .get("/orders/me", {
         params: { status: filter === "ALL" ? undefined : filter },
       })
       .then((res) => setOrders(res.data));
+  };
+
+  useEffect(() => {
+    fetchOrders();
   }, [filter]);
+
+  const handleCancel = async (orderId: number) => {
+    try {
+      await api.post(`/orders/${orderId}/cancel`);
+      fetchOrders();
+    } catch {
+      alert("주문 취소에 실패했습니다.");
+    }
+  };
 
   const getStatusColor = (status: string) => {
     if (status === "FILLED") return "bg-green-100 text-green-700";
     if (status === "PENDING") return "bg-blue-100 text-blue-700";
+    if (status === "PARTIAL") return "bg-yellow-100 text-yellow-700";
     if (status === "CANCELLED") return "bg-red-100 text-red-700";
     return "bg-gray-100 text-gray-700";
+  };
+
+  const getStatusLabel = (status: string) => {
+    if (status === "FILLED") return "체결완료";
+    if (status === "PENDING") return "미체결";
+    if (status === "PARTIAL") return "부분체결";
+    if (status === "CANCELLED") return "취소됨";
+    return status;
   };
 
   return (
@@ -87,16 +109,20 @@ export default function OrdersPage() {
                   </div>
                 </div>
 
-                <div
-                  className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                    order.status,
-                  )}`}
-                >
-                  {order.status === "FILLED"
-                    ? "체결완료"
-                    : order.status === "PENDING"
-                      ? "미체결"
-                      : "주문실패"}
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}
+                  >
+                    {getStatusLabel(order.status)}
+                  </div>
+                  {(order.status === "PENDING" || order.status === "PARTIAL") && (
+                    <button
+                      onClick={() => handleCancel(order.id)}
+                      className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500 hover:bg-red-50 hover:text-red-500 transition-colors cursor-pointer"
+                    >
+                      취소
+                    </button>
+                  )}
                 </div>
               </div>
 

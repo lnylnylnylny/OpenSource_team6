@@ -69,8 +69,8 @@ class MatchingEngine:
                 buy.filled_volume += trade_volume
                 sell.filled_volume += trade_volume
 
-                buy.status = "FILLED"
-                sell.status = "FILLED"
+                buy.status = "FILLED" if buy.filled_volume >= buy.volume else "PARTIAL"
+                sell.status = "FILLED" if sell.filled_volume >= sell.volume else "PARTIAL"
 
                 # === 핵심: 사용자 자산 업데이트 ===
                 try:
@@ -368,6 +368,9 @@ class MatchingEngine:
         amount: Decimal,
     ):
         """거래 로그 기록"""
+        stock = db.query(Stock).filter_by(id=trade.stock_id).first()
+        stock_name = stock.name if stock else ""
+
         # 매수자 로그
         db.add(
             Transaction(
@@ -377,7 +380,7 @@ class MatchingEngine:
                 amount=-amount,
                 quantity=trade.volume,
                 price=trade.price,
-                description=f"{trade.volume}주 매수 @ {trade.price}",
+                description=f"{stock_name} {trade.volume}주 매수",
             )
         )
 
@@ -390,7 +393,7 @@ class MatchingEngine:
                 amount=amount,
                 quantity=trade.volume,
                 price=trade.price,
-                description=f"{trade.volume}주 매도 @ {trade.price}",
+                description=f"{stock_name} {trade.volume}주 매도",
             )
         )
 

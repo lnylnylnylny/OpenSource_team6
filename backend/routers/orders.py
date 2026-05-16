@@ -76,9 +76,6 @@ async def create_order(
                 detail=f"보유 현금이 부족합니다. 필요: {required_amount:,}원, 보유: {balance.cash_balance if balance else 0:,.0f}원",
             )
 
-        # 잔고 차감
-        balance.cash_balance -= required_amount
-
     elif order.side == "SELL" and user.provider != "dummy":
         portfolio = (
             db.query(UserHolding)
@@ -95,12 +92,6 @@ async def create_order(
                 status_code=400,
                 detail=f"보유 수량이 부족합니다. 주문: {order.volume}주, 보유: {owned}주",
             )
-
-        # 보유 수량 차감
-        if not portfolio:
-            portfolio = UserHolding(user_id=user.id, stock_id=stock.id, quantity=0)
-            db.add(portfolio)
-        portfolio.quantity -= order.volume
 
     # ==================== 주문 생성 및 즉시 체결 ====================
     new_order = Order(
