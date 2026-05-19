@@ -14,7 +14,7 @@ router = APIRouter(
     tags=["quizzes"]
 )
 
-QUIZ_REWARDS = {"하": 1000, "중": 3000, "상": 500000}
+QUIZ_REWARDS = {"하": 500000, "중": 1000000, "상": 1500000}
 
 
 class QuizSubmitRequest(BaseModel):

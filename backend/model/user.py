@@ -14,7 +14,7 @@ class User(Base):
     profile_image  = Column(String(500), nullable=True)
     created_at     = Column(DateTime(timezone=True), server_default=func.now())
 
-    initial_balance = Column(Numeric(15, 2), default=1000000, nullable=False) # 초기 자본금 (100만원)
+    initial_balance = Column(Numeric(15, 2), default=10000000, nullable=False) # 초기 자본금 (1000만원)
     balances = relationship("UserBalance", back_populates="user", cascade="all, delete-orphan")
     holdings = relationship("UserHolding", back_populates="user", cascade="all, delete-orphan")
     orders = relationship("Order", back_populates="user", cascade="all, delete-orphan")
