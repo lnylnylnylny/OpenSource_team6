@@ -11,15 +11,14 @@ from model import Order, Stock, User, UserHolding, UserBalance
 from core.trade_system import get_matching_engine
 from websocket_manager import manager
 from core.jwt import get_current_user
-from core.trade_bot import TradeBot, get_trade_bot
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
-matching_engine = get_matching_engine()
+matching_engine = get_matching_engine()  # 현재는 시장 데이터용
 
 
 class OrderCreate(BaseModel):
-    stock_code: str
+    stock_symbol: str  # stock_code → stock_symbol
     side: Literal["BUY", "SELL"]
     order_type: Literal["LIMIT", "MARKET"]
     price: Decimal | None = None
@@ -28,7 +27,7 @@ class OrderCreate(BaseModel):
 
 class OrderResponse(BaseModel):
     id: int
-    stock_code: str
+    stock_symbol: str  # stock_code → stock_symbol
     side: str
     order_type: str
     price: Decimal | None
@@ -46,30 +45,27 @@ async def create_order(
     order: OrderCreate,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
-    trade_bot: TradeBot = Depends(get_trade_bot),
 ):
-    stock = db.query(Stock).filter(Stock.code == order.stock_code).first()
+    # symbol로 종목 조회
+    stock = db.query(Stock).filter(Stock.symbol == order.stock_symbol).first()
     if not stock:
         raise HTTPException(404, "종목을 찾을 수 없습니다")
 
     if order.order_type == "LIMIT" and not order.price:
         raise HTTPException(400, "지정가는 가격이 필수입니다")
 
-    # ==================== 즉시 체결 처리 ====================
+    # MARKET 주문인 경우 현재가 사용
     executed_price = order.price
-
     if order.order_type == "MARKET":
-        executed_price = getattr(stock, "last_price", None) or getattr(
-            stock, "current_price", None
-        )
+        executed_price = stock.last_price
         if not executed_price:
             raise HTTPException(400, "현재가를 가져올 수 없습니다")
 
-    # BUY / SELL 검증
+    # ==================== 잔고 / 보유량 검증 ====================
     if order.side == "BUY" and user.provider != "dummy":
         required_amount = executed_price * order.volume
-
         balance = db.query(UserBalance).filter_by(user_id=user.id).first()
+
         if not balance or balance.cash_balance < required_amount:
             raise HTTPException(
                 status_code=400,
@@ -93,13 +89,13 @@ async def create_order(
                 detail=f"보유 수량이 부족합니다. 주문: {order.volume}주, 보유: {owned}주",
             )
 
-    # ==================== 주문 생성 및 즉시 체결 ====================
+    # ==================== 주문 생성 ====================
     new_order = Order(
         user_id=user.id,
         stock_id=stock.id,
         side=order.side,
         order_type=order.order_type,
-        price=executed_price,  # MARKET인 경우 실제 체결 가격 저장
+        price=executed_price,
         volume=order.volume,
         filled_volume=0,
         status="PENDING",
@@ -110,16 +106,12 @@ async def create_order(
     db.commit()
     db.refresh(new_order)
 
-    # ==================== 봇 반대 주문 (필요 시) ====================
-    # 사용자 주문은 이미 체결되었으므로, 봇에게만 반대 주문을 넣어 시장 유동성 유지
-    await trade_bot.create_instant_counter_order(db, new_order.stock_id, new_order)
-
     # WebSocket 브로드캐스트
     await manager.broadcast(
-        stock.code,
+        stock.symbol,  # symbol 사용
         {
-            "type": "order_filled",
-            "symbol": stock.code,
+            "type": "order_filled",  # 실제로는 아직 체결되지 않았지만 UI 호환을 위해 유지
+            "symbol": stock.symbol,
             "side": new_order.side,
             "price": float(new_order.price),
             "volume": new_order.volume,
@@ -131,7 +123,7 @@ async def create_order(
 
     return {
         "id": new_order.id,
-        "stock_code": stock.code,
+        "stock_symbol": stock.symbol,
         "side": new_order.side,
         "order_type": new_order.order_type,
         "price": new_order.price,
@@ -142,7 +134,6 @@ async def create_order(
     }
 
 
-# 나머지 엔드포인트는 그대로 유지
 @router.get("/me", response_model=List[OrderResponse])
 def get_my_orders(
     status: str | None = None,
@@ -163,7 +154,7 @@ def get_my_orders(
     return [
         {
             "id": o.id,
-            "stock_code": o.stock.code,
+            "stock_symbol": o.stock.symbol,  # symbol로 변경
             "side": o.side,
             "order_type": o.order_type,
             "price": o.price,

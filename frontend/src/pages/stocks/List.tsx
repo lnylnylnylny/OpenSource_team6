@@ -39,9 +39,9 @@ export default function StockListPage() {
       <div className="space-y-3">
         {stocks.map((stock) => (
           <div
-            key={stock.code}
+            key={stock.symbol}
             // onClick={() => setSelectedStock(stock)}
-            onClick={() => navigate(`/stocks/${stock.code}`)}
+            onClick={() => navigate(`/stocks/${stock.symbol}`)}
             className="bg-white rounded-3xl p-5 active:scale-[0.985] transition-transform duration-200 shadow-sm border border-gray-100 cursor-pointer"
           >
             <div className="flex justify-between items-start">
@@ -49,7 +49,7 @@ export default function StockListPage() {
                 <div className="font-semibold text-lg text-gray-900">
                   {stock.name}
                 </div>
-                <div className="text-sm text-gray-500">{stock.code}</div>
+                <div className="text-sm text-gray-500">{stock.symbol}</div>
               </div>
 
               <div className="text-right">

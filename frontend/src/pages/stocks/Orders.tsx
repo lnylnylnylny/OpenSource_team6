@@ -8,7 +8,7 @@ import { formatWon } from "@/api/numbers";
 
 export default function OrdersPage() {
   const navigate = useNavigate();
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<Order[] | null>(null);
   const [filter, setFilter] = useState<"ALL" | "PENDING" | "FILLED">("ALL");
 
   const fetchOrders = () => {
@@ -77,7 +77,11 @@ export default function OrdersPage() {
       </div>
 
       <div className="space-y-4">
-        {orders.length === 0 ? (
+        {!orders ? (
+          <div className="bg-white rounded-3xl py-20 text-center text-gray-400">
+            불러오는 중...
+          </div>
+        ) : orders.length === 0 ? (
           <div className="bg-white rounded-3xl py-20 text-center text-gray-400">
             주문 내역이 없습니다
           </div>
@@ -115,7 +119,8 @@ export default function OrdersPage() {
                   >
                     {getStatusLabel(order.status)}
                   </div>
-                  {(order.status === "PENDING" || order.status === "PARTIAL") && (
+                  {(order.status === "PENDING" ||
+                    order.status === "PARTIAL") && (
                     <button
                       onClick={() => handleCancel(order.id)}
                       className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500 hover:bg-red-50 hover:text-red-500 transition-colors cursor-pointer"

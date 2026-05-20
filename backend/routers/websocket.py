@@ -17,7 +17,7 @@ async def websocket_quotes(websocket: WebSocket, symbol: str, db: Session = Depe
     await manager.connect(websocket, symbol)
     try:
         # 최초 접속 시 최신 데이터 전송
-        stock = db.query(Stock).filter(Stock.code == symbol).first()
+        stock = db.query(Stock).filter(Stock.symbol == symbol).first()
         if stock:
             latest = db.query(Quote)\
                 .filter(Quote.stock_id == stock.id)\

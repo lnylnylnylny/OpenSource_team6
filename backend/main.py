@@ -11,22 +11,12 @@ from routers.websocket import router as websocket_router
 from routers.orders import router as orders_router
 from routers.quotes import router as quotes_router
 from contextlib import asynccontextmanager
-from bot_runner import trade_bot_manager
 from routers.quiz import router as quiz_router
 
 # 앱 시작 시 테이블 자동 생성
 Base.metadata.create_all(bind=engine)
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    db = SessionLocal()
-    print("Started server!")
-    await trade_bot_manager.start(db)
-    yield
-    print("Shutting down server...")
-    await trade_bot_manager.stop()
-
-app = FastAPI(title="Stock App", lifespan=lifespan)
+app = FastAPI(title="Stock App")
 
 
 app.add_middleware(

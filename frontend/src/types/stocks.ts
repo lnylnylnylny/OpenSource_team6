@@ -1,11 +1,15 @@
 export interface Stock {
   id: number;
-  code: string;
+  symbol: string;
   name: string;
-  market: string;
+  market?: string;
+  asset_type?: string;
   last_price: number | null;
   change_rate: number | null;
   volume: number;
+  prev_close?: number | null;
+  market_cap?: number | null;
+  is_active?: boolean;
 }
 
 export interface Quote {
