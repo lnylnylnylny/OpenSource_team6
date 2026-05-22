@@ -23,7 +23,7 @@ export interface Quote {
 }
 
 export interface Holding {
-  stock_code: string;
+  stock_symbol: string;
   stock_name: string;
   quantity: number;
   avg_price: number;
