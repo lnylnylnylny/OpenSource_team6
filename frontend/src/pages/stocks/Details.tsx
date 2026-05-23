@@ -12,6 +12,7 @@ import {
 import { useWebSocket } from "@/hooks/useWebSocket";
 import type { Stock } from "@/types/stocks";
 import api from "@/api";
+import { SplashView } from "@/components/SplashView";
 
 export default function StockDetailPage() {
   const { symbol } = useParams<{ symbol: string }>(); // code → symbol 변경
@@ -98,8 +99,7 @@ export default function StockDetailPage() {
     }
   };
 
-  if (loading)
-    return <div className="p-10 text-center text-gray-500">로딩중...</div>;
+  if (loading) return <SplashView />;
   if (!stock)
     return <div className="p-10 text-center">종목을 찾을 수 없습니다.</div>;
 
