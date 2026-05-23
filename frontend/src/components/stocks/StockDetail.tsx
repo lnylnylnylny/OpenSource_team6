@@ -16,7 +16,7 @@ export default function StockDetailModal({
 
   const handleOrder = async () => {
     await api.post(import.meta.env.VITE_API_URL + "/orders", {
-      stock_code: stock.code,
+      stock_code: stock.symbol,
       side,
       order_type: orderType,
       price: orderType === "LIMIT" ? price : undefined,
@@ -36,7 +36,7 @@ export default function StockDetailModal({
           <div className="flex justify-between items-center mb-6">
             <div>
               <div className="text-2xl font-bold">{stock.name}</div>
-              <div className="text-gray-500">{stock.code}</div>
+              <div className="text-gray-500">{stock.symbol}</div>
             </div>
             <button onClick={onClose} className="text-gray-400 text-2xl">
               ✕
@@ -52,7 +52,7 @@ export default function StockDetailModal({
               className={`text-xl font-medium mt-1 ${(stock.change_rate ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}
             >
               {(stock.change_rate ?? 0) >= 0 ? "+" : ""}
-              {stock.change_rate?.toFixed(2)}%
+              {stock.change_rate?.toFixed(0)}%
             </div>
           </div>
 

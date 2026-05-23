@@ -90,7 +90,7 @@ export const Mypage = () => {
       {/* 보유 종목 — 클릭 시 종목 상세로 이동 */}
       <HoldingsTable
         holdings={holdings}
-        onSelect={(h) => navigate(`/stocks/${h.stock_code}`)}
+        onSelect={(h) => navigate(`/stocks/${h.stock_symbol}`)}
       />
     </div>
   );

@@ -1,3 +1,4 @@
+import { formatWon } from "@/api/numbers";
 import type { Balance } from "@/types/stocks";
 
 interface InvestmentSummaryProps {
@@ -20,7 +21,7 @@ export const InvestmentSummary = ({ balance }: InvestmentSummaryProps) => {
       <div className="bg-[#f0faf6] border border-[#9FE1CB] rounded-2xl p-4 mb-3">
         <p className="text-xs text-[#0F6E56] mb-1">총 평가금액</p>
         <p className="text-3xl font-bold text-[#085041] mb-4">
-          {totalBalance.toLocaleString()}
+          {formatWon(totalBalance)}
           <span className="text-sm font-medium text-[#0F6E56] ml-1">원</span>
         </p>
 
@@ -33,10 +34,10 @@ export const InvestmentSummary = ({ balance }: InvestmentSummaryProps) => {
 
         <div className="flex justify-between">
           <p className="text-xs text-[#0F6E56]">
-            투자 중 {investedAmount.toLocaleString()}원 ({investedRatio}%)
+            투자 중 {formatWon(investedAmount)}원 ({investedRatio}%)
           </p>
           <p className="text-xs text-[#0F6E56]">
-            가용 {cashBalance.toLocaleString()}원
+            가용 {formatWon(cashBalance)}원
           </p>
         </div>
       </div>
@@ -58,7 +59,7 @@ export const InvestmentSummary = ({ balance }: InvestmentSummaryProps) => {
               isProfit ? "text-[#1D9E75]" : "text-red-500"
             }`}
           >
-            {isProfit ? "▲" : "▼"} {Math.abs(totalPnlRate).toFixed(2)}%
+            {isProfit ? "▲" : "▼"} {Math.abs(totalPnlRate).toFixed(0)}%
           </p>
         </div>
 

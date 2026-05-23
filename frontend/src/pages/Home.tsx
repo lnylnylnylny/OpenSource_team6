@@ -7,6 +7,7 @@ import {
   type Transaction,
 } from "../components/RecentTransactions";
 import api from "../api";
+import { formatWon } from "@/api/numbers";
 
 const getGreeting = () => {
   const hour = new Date().getHours();
@@ -97,12 +98,12 @@ export const Home = () => {
           </p>
           <p className="text-[32px] font-extrabold text-white leading-none">
             <span className="text-lg font-semibold opacity-85 mr-0.5">₩</span>
-            {cashBalance !== null ? cashBalance.toLocaleString() : "—"}
+            {cashBalance !== null ?formatWon(cashBalance) : "—"}
           </p>
           <p className="text-xs text-white/60 mt-1.5">
             오늘 퀴즈로{" "}
             <span className="text-green-300 font-semibold">
-              +₩{todayEarned.toLocaleString()}
+              +₩{formatWon(todayEarned)}
             </span>{" "}
             획득
           </p>

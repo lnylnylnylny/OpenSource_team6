@@ -22,10 +22,11 @@ export const HoldingsTable = ({ holdings, onSelect }: HoldingsTableProps) => {
       <p className="text-xs font-medium text-gray-400 mb-3">보유 종목</p>
 
       <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
-        <div className="grid grid-cols-4 px-4 py-2 border-b border-gray-100">
+        <div className="grid grid-cols-5 px-4 py-2 border-b border-gray-100">
           <p className="text-xs text-gray-400">종목</p>
           <p className="text-xs text-gray-400 text-center">평균가</p>
           <p className="text-xs text-gray-400 text-center">현재가</p>
+          <p className="text-xs text-gray-400 text-center">수량</p>
           <p className="text-xs text-gray-400 text-right">손익</p>
         </div>
 
@@ -34,15 +35,15 @@ export const HoldingsTable = ({ holdings, onSelect }: HoldingsTableProps) => {
 
           return (
             <div
-              key={item.stock_code}
+              key={item.stock_symbol}
               onClick={() => onSelect?.(item)}
-              className={`grid grid-cols-4 px-4 py-3 items-center ${
+              className={`grid grid-cols-5 px-4 py-3 items-center ${
                 index < holdings.length - 1 ? "border-b border-gray-50" : ""
               } ${onSelect ? "cursor-pointer active:bg-gray-50" : ""}`}
             >
               <div>
                 <p className="text-sm font-medium text-gray-900">{item.stock_name}</p>
-                <p className="text-[11px] text-gray-300 mt-0.5">{item.stock_code}</p>
+                <p className="text-[11px] text-gray-300 mt-0.5">{item.stock_symbol}</p>
               </div>
 
               <p className="text-xs text-gray-500 text-center">
@@ -53,9 +54,13 @@ export const HoldingsTable = ({ holdings, onSelect }: HoldingsTableProps) => {
                 {item.current_price != null ? Number(item.current_price).toLocaleString() : "-"}
               </p>
 
+              <p className="text-xs text-gray-500 text-center">
+                {item.quantity}주
+              </p>
+
               <p className={`text-xs font-semibold text-right ${isUp ? "text-[#1D9E75]" : "text-red-500"}`}>
                 {isUp ? "+" : ""}
-                {Number(item.pnl_rate).toFixed(1)}%
+                {Number(item.pnl_rate).toFixed(2)}%
               </p>
             </div>
           );

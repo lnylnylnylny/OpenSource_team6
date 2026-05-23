@@ -14,7 +14,7 @@ import type { Stock } from "@/types/stocks";
 import api from "@/api";
 
 export default function StockDetailPage() {
-  const { code } = useParams<{ code: string }>();
+  const { symbol } = useParams<{ symbol: string }>(); // code → symbol 변경
   const navigate = useNavigate();
 
   const [stock, setStock] = useState<Stock | null>(null);
@@ -26,23 +26,25 @@ export default function StockDetailPage() {
   const [price, setPrice] = useState(0);
   const [volume, setVolume] = useState(10);
 
-  // 실시간 WebSocket
+  // 실시간 WebSocket (symbol 사용)
   const { price: livePrice, changeRate: liveChangeRate } = useWebSocket(
-    code || "",
+    symbol || "",
   );
 
-  // 종목 정보 + 최근 차트 데이터 불러오기
+  // 종목 정보 + 차트 데이터 불러오기
   useEffect(() => {
-    if (!code) return;
+    if (!symbol) return;
 
     const fetchData = async () => {
       try {
-        const stockRes = await api.get(`/stocks/${code}`);
-        setStock(stockRes.data);
-        setPrice(stockRes.data.last_price || 0);
+        const stockRes = await api.get(`/stocks/${symbol}`);
+        const stockData = stockRes.data;
 
-        // 최근 30일/30개 시세 데이터
-        const chartRes = await api.get(`/quotes/${code}/history?days=30`);
+        setStock(stockData);
+        setPrice(Number(stockData.last_price) || 0);
+
+        // 최근 30일 Quote 데이터
+        const chartRes = await api.get(`/quotes/${symbol}/history?days=30`);
         const formatted = chartRes.data.map((q: any) => ({
           time: new Date(q.quote_time).toLocaleTimeString("ko-KR", {
             hour: "2-digit",
@@ -50,25 +52,29 @@ export default function StockDetailPage() {
           }),
           price: Number(q.close_price),
         }));
+
         setChartData(formatted);
+      } catch (err) {
+        console.error("종목 데이터 로딩 실패", err);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [code]);
+  }, [symbol]);
 
-  // 실시간 가격 반영
+  // 실시간 가격 업데이트
   useEffect(() => {
     if (livePrice == null) return;
+
     setPrice(livePrice);
     setStock((prev) =>
       prev
         ? {
             ...prev,
             last_price: livePrice,
-            change_rate: liveChangeRate && prev.change_rate,
+            change_rate: liveChangeRate ?? prev.change_rate,
           }
         : null,
     );
@@ -76,9 +82,10 @@ export default function StockDetailPage() {
 
   const handleOrder = async () => {
     if (!stock) return;
+
     try {
       await api.post(`/orders`, {
-        stock_code: stock.code,
+        stock_symbol: stock.symbol,
         side,
         order_type: orderType,
         price: orderType === "LIMIT" ? price : undefined,
@@ -96,12 +103,11 @@ export default function StockDetailPage() {
   if (!stock)
     return <div className="p-10 text-center">종목을 찾을 수 없습니다.</div>;
 
-  const currentPrice = livePrice || stock.last_price || 0;
-  const currentChange =
-    liveChangeRate !== 0 ? liveChangeRate : (stock.change_rate ?? 0);
+  const currentPrice = livePrice || Number(stock.last_price) || 0;
+  const currentChange = liveChangeRate ?? stock.change_rate ?? 0;
 
   return (
-    <div className="px-5 pt-6 pb-24 bg-gray-50">
+    <div className="px-5 pt-6 pb-24 bg-gray-50 min-h-screen">
       <button
         onClick={() => navigate(-1)}
         className="mb-4 text-gray-500 flex items-center gap-1 active:scale-95"
@@ -110,11 +116,11 @@ export default function StockDetailPage() {
       </button>
 
       {/* 종목 헤더 */}
-      <div className="bg-white rounded-3xl p-6 mb-6">
+      <div className="bg-white rounded-3xl p-6 mb-6 shadow-sm">
         <div className="flex justify-between items-start">
           <div>
             <div className="text-3xl font-bold">{stock.name}</div>
-            <div className="text-gray-500">{stock.code}</div>
+            <div className="text-gray-500 text-lg">{stock.symbol}</div>
           </div>
           <div className="text-right">
             <div className="text-4xl font-semibold tracking-tighter">
@@ -130,9 +136,9 @@ export default function StockDetailPage() {
         </div>
       </div>
 
-      {/* 차트 영역 */}
-      <div className="bg-white rounded-3xl p-5 mb-6">
-        <div className="text-sm text-gray-500 mb-3">최근 가격 추이</div>
+      {/* 차트 */}
+      <div className="bg-white rounded-3xl p-5 mb-6 shadow-sm">
+        <div className="text-sm text-gray-500 mb-3">최근 가격 추이 (30일)</div>
         <div className="h-72">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
@@ -159,41 +165,23 @@ export default function StockDetailPage() {
       </div>
 
       {/* 주문 패널 */}
-      <div className="bg-white rounded-3xl p-6">
+      <div className="bg-white rounded-3xl p-6 shadow-sm">
         <div className="flex bg-gray-100 rounded-2xl p-1 mb-6">
           <button
             onClick={() => setSide("BUY")}
-            className={`flex-1 py-4 rounded-xl font-semibold ${side === "BUY" ? "bg-blue-600 text-white" : "text-gray-600"}`}
+            className={`flex-1 py-4 rounded-xl font-semibold transition-all ${side === "BUY" ? "bg-blue-600 text-white" : "text-gray-600"}`}
           >
             매수
           </button>
           <button
             onClick={() => setSide("SELL")}
-            className={`flex-1 py-4 rounded-xl font-semibold ${side === "SELL" ? "bg-red-600 text-white" : "text-gray-600"}`}
+            className={`flex-1 py-4 rounded-xl font-semibold transition-all ${side === "SELL" ? "bg-red-600 text-white" : "text-gray-600"}`}
           >
             매도
           </button>
         </div>
 
         <div className="space-y-6">
-          {/* <div>
-            <div className="text-sm text-gray-500 mb-2">주문 유형</div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setOrderType("MARKET")}
-                className={`flex-1 py-3 rounded-2xl ${orderType === "MARKET" ? "bg-blue-600 text-white" : "bg-gray-100"}`}
-              >
-                시장가
-              </button>
-              <button
-                onClick={() => setOrderType("LIMIT")}
-                className={`flex-1 py-3 rounded-2xl ${orderType === "LIMIT" ? "bg-blue-600 text-white" : "bg-gray-100"}`}
-              >
-                지정가
-              </button>
-            </div>
-          </div> */}
-
           {orderType === "LIMIT" && (
             <div>
               <div className="text-sm text-gray-500 mb-2">가격 (원)</div>
@@ -218,7 +206,9 @@ export default function StockDetailPage() {
 
           <button
             onClick={handleOrder}
-            className={`w-full py-5 rounded-3xl text-xl font-bold text-white active:scale-95 transition-all ${side === "BUY" ? "bg-blue-600" : "bg-red-600"}`}
+            className={`w-full py-5 rounded-3xl text-xl font-bold text-white active:scale-95 transition-all ${
+              side === "BUY" ? "bg-blue-600" : "bg-red-600"
+            }`}
           >
             {side === "BUY" ? "매수하기" : "매도하기"}
           </button>
