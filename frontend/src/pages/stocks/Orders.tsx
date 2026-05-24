@@ -115,7 +115,9 @@ export default function OrdersPage() {
 
                 <div className="flex items-center gap-2">
                   <div
-                    className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}
+                    className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                      order.status
+                    )}`}
                   >
                     {getStatusLabel(order.status)}
                   </div>
@@ -144,12 +146,6 @@ export default function OrdersPage() {
                   <div className="text-gray-500">주문수량</div>
                   <div className="font-medium mt-0.5">
                     {formatWon(order.volume)}주
-                  </div>
-                </div>
-                <div>
-                  <div className="text-gray-500">체결수량</div>
-                  <div className="font-medium mt-0.5">
-                    {formatWon(order.filled_volume)}주
                   </div>
                 </div>
                 <div>
