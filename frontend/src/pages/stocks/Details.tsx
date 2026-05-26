@@ -14,7 +14,7 @@ import type { Stock } from "@/types/stocks";
 import api from "@/api";
 import { SplashView } from "@/components/SplashView";
 
-export default function StockDetailPage() {
+const StockDetailPage = () => {
   const { symbol } = useParams<{ symbol: string }>(); // code → symbol 변경
   const navigate = useNavigate();
 
@@ -216,4 +216,6 @@ export default function StockDetailPage() {
       </div>
     </div>
   );
-}
+};
+
+export default StockDetailPage;

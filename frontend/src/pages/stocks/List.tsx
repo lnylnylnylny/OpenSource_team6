@@ -5,7 +5,7 @@ import StockDetailModal from "@/components/stocks/StockDetail";
 import { useNavigate } from "react-router";
 import { FiArrowLeft } from "react-icons/fi";
 
-export default function StockListPage() {
+const StockListPage = () => {
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [search, setSearch] = useState("");
   const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
@@ -81,4 +81,6 @@ export default function StockListPage() {
       )}
     </div>
   );
-}
+};
+
+export default StockListPage;

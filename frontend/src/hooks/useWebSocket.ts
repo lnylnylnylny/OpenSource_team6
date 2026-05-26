@@ -1,7 +1,7 @@
 // src/hooks/useWebSocket.ts
 import { useEffect, useRef, useState } from "react";
 
-export function useWebSocket(symbol: string) {
+export const useWebSocket = (symbol: string) => {
   const [price, setPrice] = useState<number | null>(null);
   const [changeRate, setChangeRate] = useState<number>(0);
   const [volume, setVolume] = useState<number>(0);
@@ -30,4 +30,4 @@ export function useWebSocket(symbol: string) {
   }, [symbol]);
 
   return { price, changeRate, volume };
-}
+};
