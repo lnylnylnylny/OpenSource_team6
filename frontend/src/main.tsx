@@ -28,7 +28,7 @@ const router = createBrowserRouter([
       { path: "stocks/balance", element: <PortfolioPage /> },
       { path: "stocks/orders", element: <OrdersPage /> },
       { path: "stocks/list", element: <StockListPage /> },
-      { path: "stocks/:code", element: <StockDetailPage /> },
+      { path: "stocks/:symbol", element: <StockDetailPage /> },
     ],
   },
 ]);

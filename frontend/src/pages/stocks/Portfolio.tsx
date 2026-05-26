@@ -76,14 +76,14 @@ export default function PortfolioPage() {
       <div className="space-y-4">
         {holdings.map((h) => (
           <div
-            key={h.stock_code}
-            onClick={() => navigate(`/stocks/${h.stock_code}`)}
+            key={h.stock_symbol}
+            onClick={() => navigate(`/stocks/${h.stock_symbol}`)}
             className="bg-white rounded-3xl p-5 active:scale-[0.985] transition-all cursor-pointer"
           >
             <div className="flex justify-between">
               <div>
                 <div className="font-semibold text-xl">{h.stock_name}</div>
-                <div className="text-gray-500">{h.stock_code}</div>
+                <div className="text-gray-500">{h.stock_symbol}</div>
               </div>
               <div className="text-right">
                 <div className="font-semibold text-2xl">
