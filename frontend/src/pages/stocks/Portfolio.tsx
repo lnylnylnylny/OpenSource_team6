@@ -8,7 +8,7 @@ import api from "@/api";
 import { FiSearch, FiClipboard } from "react-icons/fi";
 import { formatWon } from "@/api/numbers";
 
-export default function PortfolioPage() {
+const PortfolioPage = () => {
   const navigate = useNavigate();
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [balance, setBalance] = useState<any>(null);
@@ -112,4 +112,6 @@ export default function PortfolioPage() {
       </div>
     </div>
   );
-}
+};
+
+export default PortfolioPage;

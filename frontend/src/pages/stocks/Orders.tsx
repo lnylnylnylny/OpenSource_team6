@@ -6,7 +6,7 @@ import { useNavigate } from "react-router";
 import { FiArrowLeft } from "react-icons/fi";
 import { formatWon } from "@/api/numbers";
 
-export default function OrdersPage() {
+const OrdersPage = () => {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[] | null>(null);
   const [filter, setFilter] = useState<"ALL" | "PENDING" | "FILLED">("ALL");
@@ -29,7 +29,9 @@ export default function OrdersPage() {
       fetchOrders();
     } catch {
       alert("주문 취소에 실패했습니다.");
-    }
+    };
+
+    export default OrdersPage;
   };
 
   const getStatusColor = (status: string) => {

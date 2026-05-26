@@ -2,13 +2,13 @@ import { useState } from "react";
 import type { Stock } from "@/types/stocks";
 import api from "@/api";
 
-export default function StockDetailModal({
+const StockDetailModal = ({
   stock,
   onClose,
 }: {
   stock: Stock;
   onClose: () => void;
-}) {
+}) => {
   const [side, setSide] = useState<"BUY" | "SELL">("BUY");
   const [orderType, setOrderType] = useState<"LIMIT" | "MARKET">("LIMIT");
   const [price, setPrice] = useState(stock.last_price || 0);
@@ -123,4 +123,6 @@ export default function StockDetailModal({
       </div>
     </div>
   );
-}
+};
+
+export default StockDetailModal;

@@ -14,7 +14,7 @@ import type { Stock } from "@/types/stocks";
 import api from "@/api";
 import { SplashView } from "@/components/SplashView";
 
-export default function StockDetailPage() {
+const StockDetailPage = () => {
   const { symbol } = useParams<{ symbol: string }>(); // code → symbol 변경
   const navigate = useNavigate();
 
@@ -59,7 +59,9 @@ export default function StockDetailPage() {
         console.error("종목 데이터 로딩 실패", err);
       } finally {
         setLoading(false);
-      }
+      };
+
+      export default StockDetailPage;
     };
 
     fetchData();

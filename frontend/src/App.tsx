@@ -8,7 +8,7 @@ const pageVariants = {
   exit: { opacity: 0, x: -20 },
 };
 
-export default function App() {
+const App = () => {
   const location = useLocation();
   const outlet = useOutlet();
   return (
@@ -35,4 +35,6 @@ export default function App() {
       </div>
     </div>
   );
-}
+};
+
+export default App;
