@@ -29,9 +29,7 @@ const OrdersPage = () => {
       fetchOrders();
     } catch {
       alert("주문 취소에 실패했습니다.");
-    };
-
-    export default OrdersPage;
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -163,4 +161,6 @@ const OrdersPage = () => {
       </div>
     </div>
   );
-}
+};
+
+export default OrdersPage;

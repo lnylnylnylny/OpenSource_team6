@@ -59,9 +59,7 @@ const StockDetailPage = () => {
         console.error("종목 데이터 로딩 실패", err);
       } finally {
         setLoading(false);
-      };
-
-      export default StockDetailPage;
+      }
     };
 
     fetchData();
@@ -218,4 +216,6 @@ const StockDetailPage = () => {
       </div>
     </div>
   );
-}
+};
+
+export default StockDetailPage;

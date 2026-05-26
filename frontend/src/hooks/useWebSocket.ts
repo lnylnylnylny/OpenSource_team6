@@ -21,7 +21,7 @@ export const useWebSocket = (symbol: string) => {
         setPrice(data.price);
         setChangeRate(data.change_rate || 0);
         if (data.volume) setVolume(data.volume);
-      };
+      }
     };
 
     return () => {
@@ -30,4 +30,4 @@ export const useWebSocket = (symbol: string) => {
   }, [symbol]);
 
   return { price, changeRate, volume };
-}
+};
