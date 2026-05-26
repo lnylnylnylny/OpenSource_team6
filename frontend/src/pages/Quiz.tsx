@@ -3,6 +3,8 @@ import axios from "axios";
 import { QuizCard } from "../components/QuizCard";
 import SmartHamster from "../assets/images/smart_hamster.jpg";
 
+const BASE_URL = import.meta.env.VITE_API_URL;
+
 interface QuizData {
   id: number;
   question: string;
@@ -52,7 +54,7 @@ export const Quiz = () => {
     setLoadingLevel(difficulty);
     try {
       const response = await axios.get(
-        `http://localhost:8000/api/quizzes/random`,
+        `${BASE_URL}/api/quizzes/random`,
         { params: { difficulty } }
       );
       setQuiz(response.data);
