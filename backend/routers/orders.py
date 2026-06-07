@@ -55,6 +55,9 @@ async def create_order(
     if order.order_type == "LIMIT" and not order.price:
         raise HTTPException(400, "지정가는 가격이 필수입니다")
 
+    if order.volume <= 0:
+        raise HTTPException(400, "주문 수량은 1 이상이어야 합니다")
+
     # MARKET 주문인 경우 현재가 사용
     executed_price = order.price
     if order.order_type == "MARKET":
