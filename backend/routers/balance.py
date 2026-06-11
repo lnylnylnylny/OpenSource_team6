@@ -1,5 +1,6 @@
 # routers/balance.py
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from decimal import Decimal
@@ -70,6 +71,29 @@ def get_my_balance(
         db.add(balance)
         db.commit()
         db.refresh(balance)
+
+    total_holdings_value = (
+        db.query(func.coalesce(func.sum(UserHolding.current_value), 0))
+        .filter(UserHolding.user_id == user.id, UserHolding.quantity > 0)
+        .scalar()
+        or Decimal("0")
+    )
+    total_holdings_invested = (
+        db.query(func.coalesce(func.sum(UserHolding.total_invested), 0))
+        .filter(UserHolding.user_id == user.id, UserHolding.quantity > 0)
+        .scalar()
+        or Decimal("0")
+    )
+
+    balance.total_balance = balance.cash_balance + total_holdings_value
+    balance.total_pnl = total_holdings_value - total_holdings_invested
+    balance.total_pnl_rate = (
+        (balance.total_pnl / total_holdings_invested) * Decimal("100")
+        if total_holdings_invested > 0
+        else Decimal("0")
+    )
+    db.commit()
+    db.refresh(balance)
 
     return balance
 
